@@ -271,6 +271,27 @@
 
   .mono { font-family: var(--mono); }
   .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+
+  /* SEARCH BAR */
+  .search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .search-input {
+    flex: 1;
+    padding: 8px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: var(--font);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--muted); }
 </style>
 </head>
 <body>
@@ -383,6 +404,10 @@
             <span class="ftab" onclick="filterResults('მეტობა', this)">+ მეტობა</span>
             <span class="ftab" onclick="filterResults('pending', this)">○ ელოდება</span>
           </div>
+        </div>
+
+        <div class="search-bar">
+          <input class="search-input" id="searchInput" type="text" placeholder="🔍  ბარკოდი ან საქონელი..." oninput="applySearch()">
         </div>
 
         <div id="resultsEmpty" class="empty" style="display:none;">
@@ -500,9 +525,13 @@ function renderOpsList(ops) {
 
 async function selectOperation(id) {
   currentOpId = id;
+  currentFilter = 'all';
   document.getElementById('uploadSection').style.display = 'none';
   document.getElementById('resultsSection').style.display = 'block';
   document.getElementById('resOpId').textContent = id;
+  const si = document.getElementById('searchInput');
+  if (si) si.value = '';
+  document.querySelectorAll('.ftab').forEach((t,i) => t.classList.toggle('active', i===0));
 
   const cachedRes = cacheGet('bh_results_' + id);
   if (cachedRes) {
@@ -615,9 +644,9 @@ function renderResultsTable(results) {
     <table>
       <thead>
         <tr>
+          <th style="text-align:center;width:40px">#</th>
           <th>ბარკოდი</th>
           <th>საქონელი</th>
-          <th>ფერი/ზომა</th>
           <th style="text-align:center">მოსალოდნელი</th>
           <th style="text-align:center">დათვლილი</th>
           <th style="text-align:center">სხვაობა</th>
@@ -625,15 +654,15 @@ function renderResultsTable(results) {
         </tr>
       </thead>
       <tbody>
-        ${results.map(r => {
+        ${results.map((r, i) => {
           const cls = r.status === 'სწორი' ? 'row-matched' : r.status === 'მეტობა' ? 'row-over' : 'row-under';
           const pill = r.status === 'სწორი' ? 'pill-green' : r.status === 'მეტობა' ? 'pill-orange' : 'pill-red';
           const label = r.status === 'pending' ? 'ელოდება' : r.status;
           const diff = r.difference !== undefined ? (r.difference > 0 ? '+' + r.difference : r.difference) : '—';
           return `<tr class="${cls}">
+            <td style="text-align:center;color:var(--muted);font-size:12px">${i + 1}</td>
             <td class="mono" style="font-size:12px">${r.barcode}</td>
             <td>${r.productName || '—'}</td>
-            <td>${r.colorSize || '—'}</td>
             <td style="text-align:center">${r.expectedQty}</td>
             <td style="text-align:center">${r.scannedQty ?? '—'}</td>
             <td style="text-align:center; font-weight:600">${diff}</td>
@@ -645,12 +674,36 @@ function renderResultsTable(results) {
   `;
 }
 
+let currentFilter = 'all';
+
 function filterResults(filter, el) {
   document.querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  if (filter === 'all') { renderResultsTable(allResults); return; }
-  if (filter === 'pending') { renderResultsTable(allResults.filter(r => r.status === 'pending')); return; }
-  renderResultsTable(allResults.filter(r => r.status === filter));
+  currentFilter = filter;
+  applySearch();
+}
+
+function applySearch() {
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+
+  let filtered = allResults;
+
+  // სტატუსის ფილტრი
+  if (currentFilter === 'pending') {
+    filtered = filtered.filter(r => r.status === 'pending');
+  } else if (currentFilter !== 'all') {
+    filtered = filtered.filter(r => r.status === currentFilter);
+  }
+
+  // საძიებო ველი
+  if (q) {
+    filtered = filtered.filter(r =>
+      (r.barcode || '').toLowerCase().includes(q) ||
+      (r.productName || '').toLowerCase().includes(q)
+    );
+  }
+
+  renderResultsTable(filtered);
 }
 
 // ========== EXCEL UPLOAD ==========
@@ -693,12 +746,11 @@ function showPreview() {
   const sample = parsedItems.slice(0, 8);
   document.getElementById('previewTable').innerHTML = `
     <table>
-      <thead><tr><th>ბარკოდი</th><th>საქონელი</th><th>ფერი/ზომა</th><th style="text-align:center">რაოდ.</th></tr></thead>
+      <thead><tr><th>ბარკოდი</th><th>საქონელი</th><th style="text-align:center">რაოდ.</th></tr></thead>
       <tbody>
         ${sample.map(r => `<tr>
           <td class="mono" style="font-size:12px">${r.barcode}</td>
           <td>${r.productName}</td>
-          <td>${r.colorSize}</td>
           <td style="text-align:center">${r.expectedQty}</td>
         </tr>`).join('')}
         ${parsedItems.length > 8 ? `<tr><td colspan="4" style="color:var(--muted); text-align:center">... კიდევ ${parsedItems.length - 8} პოზიცია</td></tr>` : ''}

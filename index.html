@@ -330,8 +330,10 @@
         <h2 style="font-size:18px; font-weight:600;">ოპერაცია #<span id="resOpId"></span></h2>
         <span id="resStatus" class="badge"></span>
         <div style="margin-left:auto; display:flex; gap:8px;">
+          <button class="btn btn-outline btn-sm" id="toggleStatusBtn" onclick="toggleStatus()">სტატუსის შეცვლა</button>
           <button class="btn btn-outline btn-sm" onclick="downloadResults()">↓ Excel გადმოწერა</button>
           <button class="btn btn-outline btn-sm" onclick="loadResults(currentOpId)">↻ განახლება</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--red); border-color:var(--red)" onclick="deleteOperation()">🗑 წაშლა</button>
         </div>
       </div>
 
@@ -349,7 +351,7 @@
           <div class="stat-value red" id="statUnder">—</div>
         </div>
         <div class="stat">
-          <div class="stat-label">ლიშნური</div>
+          <div class="stat-label">მეტობა</div>
           <div class="stat-value orange" id="statOver">—</div>
         </div>
         <div class="stat">
@@ -365,7 +367,7 @@
             <span class="ftab active" onclick="filterResults('all', this)">ყველა</span>
             <span class="ftab" onclick="filterResults('სწორი', this)">✓ სწორი</span>
             <span class="ftab" onclick="filterResults('ნაკლები', this)">− ნაკლები</span>
-            <span class="ftab" onclick="filterResults('ლიშნური', this)">+ ლიშნური</span>
+            <span class="ftab" onclick="filterResults('მეტობა', this)">+ მეტობა</span>
             <span class="ftab" onclick="filterResults('pending', this)">○ ელოდება</span>
           </div>
         </div>
@@ -466,9 +468,8 @@ async function loadResults(id) {
     allResults = data.results || [];
 
     const status = opData.status || 'მიმდინარე';
-    const statusEl = document.getElementById('resStatus');
-    statusEl.textContent = status;
-    statusEl.className = 'badge ' + (status === 'დასრულებული' ? 'badge-done' : 'badge-active');
+    currentStatus = status;
+    updateStatusUI(status);
 
     if (!allResults.length && !allExpected.length) {
       document.getElementById('resultsEmpty').style.display = 'block';
@@ -489,7 +490,7 @@ async function loadResults(id) {
     // stats
     const matched = merged.filter(r => r.status === 'სწორი').length;
     const under   = merged.filter(r => r.status === 'ნაკლები' || r.status === 'pending').length;
-    const over    = merged.filter(r => r.status === 'ლიშნური').length;
+    const over    = merged.filter(r => r.status === 'მეტობა').length;
     const pending = merged.filter(r => r.status === 'pending').length;
 
     document.getElementById('statTotal').textContent   = merged.length;
@@ -527,8 +528,8 @@ function renderResultsTable(results) {
       </thead>
       <tbody>
         ${results.map(r => {
-          const cls = r.status === 'სწორი' ? 'row-matched' : r.status === 'ლიშნური' ? 'row-over' : 'row-under';
-          const pill = r.status === 'სწორი' ? 'pill-green' : r.status === 'ლიშნური' ? 'pill-orange' : 'pill-red';
+          const cls = r.status === 'სწორი' ? 'row-matched' : r.status === 'მეტობა' ? 'row-over' : 'row-under';
+          const pill = r.status === 'სწორი' ? 'pill-green' : r.status === 'მეტობა' ? 'pill-orange' : 'pill-red';
           const label = r.status === 'pending' ? 'ელოდება' : r.status;
           const diff = r.difference !== undefined ? (r.difference > 0 ? '+' + r.difference : r.difference) : '—';
           return `<tr class="${cls}">
@@ -640,6 +641,57 @@ async function createOperation() {
   }
   btn.textContent = '✓ ოპერაციის შექმნა';
   btn.disabled = false;
+}
+
+// ========== STATUS TOGGLE ==========
+let currentStatus = '';
+
+async function toggleStatus() {
+  const newStatus = currentStatus === 'დასრულებული' ? 'მიმდინარე' : 'დასრულებული';
+  const confirm = window.confirm(`ოპერაცია #${currentOpId} — სტატუსი შეიცვლება: "${newStatus}". გაგრძელება?`);
+  if (!confirm) return;
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'updateStatus', operationId: currentOpId, status: newStatus })
+    });
+    const data = await res.json();
+    if (data.success) {
+      currentStatus = newStatus;
+      updateStatusUI(newStatus);
+      await loadOperations();
+      showToast(`✓ სტატუსი შეიცვალა: ${newStatus}`);
+    } else { showToast('შეცდომა: ' + data.error); }
+  } catch(e) { showToast('კავშირის შეცდომა'); }
+}
+
+function updateStatusUI(status) {
+  const statusEl = document.getElementById('resStatus');
+  statusEl.textContent = status;
+  statusEl.className = 'badge ' + (status === 'დასრულებული' ? 'badge-done' : 'badge-active');
+  const btn = document.getElementById('toggleStatusBtn');
+  btn.textContent = status === 'დასრულებული' ? '↩ მიმდინარეზე დაბრუნება' : '✓ დასრულებულად მონიშვნა';
+}
+
+// ========== DELETE OPERATION ==========
+async function deleteOperation() {
+  if (!currentOpId) return;
+  const confirm = window.confirm(`⚠️ ოპერაცია #${currentOpId} სამუდამოდ წაიშლება — ყველა მონაცემი, ჩანაწერი, შედეგი. გააგრძელებ?`);
+  if (!confirm) return;
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'deleteOperation', operationId: currentOpId })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`✓ ოპერაცია #${currentOpId} წაიშალა`);
+      backToUpload();
+      await loadOperations();
+    } else { showToast('შეცდომა: ' + data.error); }
+  } catch(e) { showToast('კავშირის შეცდომა'); }
 }
 
 // ========== DOWNLOAD ==========

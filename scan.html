@@ -336,6 +336,101 @@
   .summary-stat .label { font-size: 11px; margin-bottom: 4px; }
   .summary-stat .value { font-size: 24px; font-weight: 600; font-family: var(--mono); }
 
+  /* ========== ITEM DETAIL MODAL ========== */
+  .detail-modal {
+    background: var(--surface);
+    border-radius: 18px 18px 0 0;
+    width: 100%;
+    padding: 0 0 24px;
+  }
+  .detail-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-barcode { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+  .detail-name { font-size: 16px; font-weight: 600; }
+  .detail-color { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  .detail-body { padding: 16px 20px; }
+
+  .qty-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .qty-box {
+    flex: 1;
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+  .qty-box .ql { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .qty-box .qv { font-size: 24px; font-weight: 600; font-family: var(--mono); }
+  .qty-box .qv.green { color: var(--green); }
+  .qty-box .qv.red   { color: var(--red); }
+  .qty-box .qv.orange { color: var(--orange); }
+
+  .edit-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .qty-editor {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .qty-btn {
+    width: 52px;
+    height: 52px;
+    background: var(--bg);
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: var(--text);
+    flex-shrink: 0;
+    transition: background 0.1s;
+  }
+  .qty-btn:active { background: var(--border); }
+  .qty-input {
+    flex: 1;
+    text-align: center;
+    font-size: 22px;
+    font-family: var(--mono);
+    font-weight: 600;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    padding: 0;
+  }
+  .btn-save {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-family: var(--font);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-reset {
+    width: 100%;
+    padding: 11px;
+    background: transparent;
+    color: var(--red);
+    border: 1.5px solid var(--red-bg);
+    border-radius: 12px;
+    font-size: 13px;
+    font-family: var(--font);
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+
   /* ========== TOAST ========== */
   .toast {
     position: fixed;
@@ -420,6 +515,43 @@
   <div class="bottom-bar">
     <button class="btn-log" onclick="showLog()">📋 ლოგი</button>
     <button class="btn-send" onclick="showSummary()" id="sendBtn">გაგზავნა →</button>
+  </div>
+</div>
+
+<!-- ITEM DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal" onclick="if(event.target===this)closeDetail()">
+  <div class="detail-modal">
+    <div class="modal-handle"></div>
+    <div class="detail-header">
+      <div class="detail-barcode" id="detailBarcode"></div>
+      <div class="detail-name" id="detailName"></div>
+      <div class="detail-color" id="detailColor"></div>
+    </div>
+    <div class="detail-body">
+      <div class="qty-row">
+        <div class="qty-box">
+          <div class="ql">მოსალოდნელი</div>
+          <div class="qv" id="detailExpected">0</div>
+        </div>
+        <div class="qty-box">
+          <div class="ql">დათვლილი</div>
+          <div class="qv" id="detailScanned">0</div>
+        </div>
+        <div class="qty-box">
+          <div class="ql">სხვაობა</div>
+          <div class="qv" id="detailDiff">0</div>
+        </div>
+      </div>
+
+      <div class="edit-label">ხელით შეცვლა</div>
+      <div class="qty-editor">
+        <button class="qty-btn" onclick="changeQty(-1)">−</button>
+        <input type="number" class="qty-input" id="qtyInput" inputmode="numeric" min="0">
+        <button class="qty-btn" onclick="changeQty(1)">+</button>
+      </div>
+      <button class="btn-save" onclick="saveQty()">✓ შენახვა</button>
+      <button class="btn-reset" onclick="resetQty()">✕ გადატვირთვა (0-ზე დაყვანა)</button>
+    </div>
   </div>
 </div>
 
@@ -554,19 +686,12 @@ function startScan(emp, opId) {
 // ========== SCAN INPUT ==========
 const barcodeInput = document.getElementById('barcodeInput');
 
+// Enter = სკანერი ან ხელით აკრეფა
 barcodeInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') processBarcode();
-});
-
-// Auto-detect scanner: if value arrives fast (< 80ms from first char)
-let scanBuffer = '';
-let scanTimer = null;
-barcodeInput.addEventListener('input', () => {
-  clearTimeout(scanTimer);
-  scanBuffer = barcodeInput.value;
-  scanTimer = setTimeout(() => {
-    if (scanBuffer.length > 0) processBarcode();
-  }, 80);
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    processBarcode();
+  }
 });
 
 function clearInput() {
@@ -664,8 +789,9 @@ function renderItems() {
     const diff = item.scannedQty - item.expectedQty;
     const colorClass = status === 'matched' ? 'green' : status === 'over' ? 'orange' : status === 'under' ? 'red' : 'muted';
     const statusText = status === 'matched' ? '✓ სწორი' : status === 'over' ? `+${diff} ლიშნური` : status === 'under' ? `${diff} ნაკლები` : '○ სკანი ელოდება';
+    const safeId = barcode.replace(/[^a-zA-Z0-9]/g,'-');
 
-    return `<div class="item-card ${status}" id="card-${barcode.replace(/[^a-zA-Z0-9]/g,'-')}">
+    return `<div class="item-card ${status}" id="card-${safeId}" onclick="openDetail('${barcode.replace(/'/g,"\\'")}')">
       <div class="item-info">
         <div class="item-barcode">${barcode}</div>
         <div class="item-name">${item.productName} · ${item.colorSize}</div>
@@ -673,6 +799,7 @@ function renderItems() {
       </div>
       <div class="item-qty">
         <div class="nums ${colorClass}">${item.scannedQty}<span class="denom">/${item.expectedQty}</span></div>
+        <div style="font-size:10px;color:var(--muted);text-align:right;margin-top:2px">✏️</div>
       </div>
     </div>`;
   }).join('');
@@ -706,6 +833,67 @@ function saveSession() {
   try {
     localStorage.setItem('bh_session_' + operationId, JSON.stringify({ items, scanLog }));
   } catch(e) {}
+}
+
+// ========== ITEM DETAIL MODAL ==========
+let detailBarcode = null;
+
+function openDetail(barcode) {
+  detailBarcode = barcode;
+  const item = items[barcode];
+  if (!item) return;
+
+  const diff = item.scannedQty - item.expectedQty;
+  const diffEl = document.getElementById('detailDiff');
+  diffEl.textContent = diff > 0 ? '+' + diff : diff;
+  diffEl.className = 'qv ' + (diff === 0 ? 'green' : diff > 0 ? 'orange' : 'red');
+
+  document.getElementById('detailBarcode').textContent = barcode;
+  document.getElementById('detailName').textContent = item.productName;
+  document.getElementById('detailColor').textContent = item.colorSize;
+  document.getElementById('detailExpected').textContent = item.expectedQty;
+  document.getElementById('detailScanned').textContent = item.scannedQty;
+  document.getElementById('qtyInput').value = item.scannedQty;
+
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function closeDetail() {
+  document.getElementById('detailModal').classList.remove('show');
+  detailBarcode = null;
+  focusInput();
+}
+
+function changeQty(delta) {
+  const input = document.getElementById('qtyInput');
+  const val = Math.max(0, (parseInt(input.value) || 0) + delta);
+  input.value = val;
+  // update diff preview
+  if (detailBarcode && items[detailBarcode]) {
+    const diff = val - items[detailBarcode].expectedQty;
+    const diffEl = document.getElementById('detailDiff');
+    diffEl.textContent = diff > 0 ? '+' + diff : diff;
+    diffEl.className = 'qv ' + (diff === 0 ? 'green' : diff > 0 ? 'orange' : 'red');
+  }
+}
+
+function saveQty() {
+  if (!detailBarcode) return;
+  const newQty = Math.max(0, parseInt(document.getElementById('qtyInput').value) || 0);
+  items[detailBarcode].scannedQty = newQty;
+  saveSession();
+  updateCounts();
+  renderItems();
+  document.getElementById('scanCount').textContent =
+    Object.values(items).filter(i => i.scannedQty > 0).length;
+  closeDetail();
+  showToast('✓ შენახულია');
+}
+
+function resetQty() {
+  if (!detailBarcode) return;
+  document.getElementById('qtyInput').value = 0;
+  changeQty(0);
 }
 
 // ========== LOG ==========

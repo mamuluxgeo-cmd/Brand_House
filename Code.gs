@@ -27,6 +27,8 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
     if (data.action === 'createOperation') return respond(createOperation(data));
     if (data.action === 'submitScans')     return respond(submitScans(data));
+    if (data.action === 'updateStatus')    return respond(updateStatus(data));
+    if (data.action === 'deleteOperation') return respond(deleteOperation(data));
     return respond({ error: 'Unknown action' });
   } catch (err) {
     return respond({ error: err.toString() });
@@ -177,6 +179,55 @@ function submitScans(data) {
         opsSheet.getRange(i + 2, 7).setValue(data.employee);
         break;
       }
+    }
+  }
+
+  return { success: true };
+}
+
+function updateStatus(data) {
+  const opsSheet = getSpreadsheet().getSheetByName('Operations');
+  if (!opsSheet) return { error: 'No operations sheet' };
+  const last = opsSheet.getLastRow();
+  if (last <= 1) return { error: 'Not found' };
+  const rows = opsSheet.getRange(2, 1, last - 1, 1).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(data.operationId)) {
+      opsSheet.getRange(i + 2, 4).setValue(data.status);
+      return { success: true };
+    }
+  }
+  return { error: 'Operation not found' };
+}
+
+function deleteOperation(data) {
+  const ss = getSpreadsheet();
+  const id = String(data.operationId);
+
+  // Delete from Operations
+  const opsSheet = ss.getSheetByName('Operations');
+  if (opsSheet && opsSheet.getLastRow() > 1) {
+    const rows = opsSheet.getRange(2, 1, opsSheet.getLastRow() - 1, 1).getValues();
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (String(rows[i][0]) === id) opsSheet.deleteRow(i + 2);
+    }
+  }
+
+  // Delete from Items
+  const itemsSheet = ss.getSheetByName('Items');
+  if (itemsSheet && itemsSheet.getLastRow() > 1) {
+    const rows = itemsSheet.getRange(2, 1, itemsSheet.getLastRow() - 1, 1).getValues();
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (String(rows[i][0]) === id) itemsSheet.deleteRow(i + 2);
+    }
+  }
+
+  // Delete from Results
+  const resSheet = ss.getSheetByName('Results');
+  if (resSheet && resSheet.getLastRow() > 1) {
+    const rows = resSheet.getRange(2, 1, resSheet.getLastRow() - 1, 1).getValues();
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (String(rows[i][0]) === id) resSheet.deleteRow(i + 2);
     }
   }
 

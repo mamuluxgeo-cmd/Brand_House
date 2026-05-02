@@ -329,10 +329,16 @@
         <button class="btn btn-outline btn-sm" onclick="backToUpload()">← უკან</button>
         <h2 style="font-size:18px; font-weight:600;">ოპერაცია #<span id="resOpId"></span></h2>
         <span id="resStatus" class="badge"></span>
-        <div style="margin-left:auto; display:flex; gap:8px;">
-          <button class="btn btn-outline btn-sm" id="toggleStatusBtn" onclick="toggleStatus()">სტატუსის შეცვლა</button>
-          <button class="btn btn-outline btn-sm" onclick="downloadResults()">↓ Excel გადმოწერა</button>
-          <button class="btn btn-outline btn-sm" onclick="loadResults(currentOpId)">↻ განახლება</button>
+        <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+          <div style="position:relative;">
+            <select id="statusSelect" onchange="toggleStatus(this.value)" style="padding:5px 28px 5px 10px; border-radius:8px; border:1px solid var(--border); font-size:12px; font-family:var(--font); background:var(--surface); color:var(--text); cursor:pointer; appearance:none; -webkit-appearance:none;">
+              <option value="მიმდინარე">⏳ მიმდინარე</option>
+              <option value="დასრულებული">✓ დასრულებული</option>
+            </select>
+            <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:10px;color:var(--muted)">▾</span>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="downloadResults()">↓ Excel</button>
+          <button class="btn btn-outline btn-sm" id="refreshBtn" onclick="refreshResults()">↻ განახლება</button>
           <button class="btn btn-outline btn-sm" style="color:var(--red); border-color:var(--red)" onclick="deleteOperation()">🗑 წაშლა</button>
         </div>
       </div>
@@ -477,10 +483,14 @@ async function loadResults(id) {
       return;
     }
 
-    // merge: expected + scanned
+    // normalize old data from sheets
     const merged = allExpected.map(exp => {
       const found = allResults.find(r => r.barcode === exp.barcode);
-      return found || {
+      if (found) {
+        if (found.status === 'ლიშნური') found.status = 'მეტობა';
+        return found;
+      }
+      return {
         barcode: exp.barcode, productName: exp.productName,
         colorSize: exp.colorSize, expectedQty: exp.expectedQty,
         scannedQty: 0, difference: -exp.expectedQty, status: 'pending'
@@ -643,14 +653,16 @@ async function createOperation() {
   btn.disabled = false;
 }
 
-// ========== STATUS TOGGLE ==========
+// ========== STATUS DROPDOWN ==========
 let currentStatus = '';
 
-async function toggleStatus() {
-  const newStatus = currentStatus === 'დასრულებული' ? 'მიმდინარე' : 'დასრულებული';
-  const confirm = window.confirm(`ოპერაცია #${currentOpId} — სტატუსი შეიცვლება: "${newStatus}". გაგრძელება?`);
-  if (!confirm) return;
-
+async function toggleStatus(newStatus) {
+  if (newStatus === currentStatus) return;
+  const label = newStatus === 'დასრულებული' ? 'დასრულებულად მონიშვნა' : 'მიმდინარეზე დაბრუნება';
+  if (!confirm(`ოპერაცია #${currentOpId} — ${label}?`)) {
+    document.getElementById('statusSelect').value = currentStatus;
+    return;
+  }
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -661,17 +673,33 @@ async function toggleStatus() {
       currentStatus = newStatus;
       updateStatusUI(newStatus);
       await loadOperations();
-      showToast(`✓ სტატუსი შეიცვალა: ${newStatus}`);
-    } else { showToast('შეცდომა: ' + data.error); }
-  } catch(e) { showToast('კავშირის შეცდომა'); }
+      showToast(`✓ სტატუსი: ${newStatus}`);
+    } else {
+      document.getElementById('statusSelect').value = currentStatus;
+      showToast('შეცდომა: ' + data.error);
+    }
+  } catch(e) {
+    document.getElementById('statusSelect').value = currentStatus;
+    showToast('კავშირის შეცდომა');
+  }
 }
 
 function updateStatusUI(status) {
+  currentStatus = status;
   const statusEl = document.getElementById('resStatus');
   statusEl.textContent = status;
   statusEl.className = 'badge ' + (status === 'დასრულებული' ? 'badge-done' : 'badge-active');
-  const btn = document.getElementById('toggleStatusBtn');
-  btn.textContent = status === 'დასრულებული' ? '↩ მიმდინარეზე დაბრუნება' : '✓ დასრულებულად მონიშვნა';
+  document.getElementById('statusSelect').value = status;
+}
+
+// ========== REFRESH WITH LOADING ==========
+async function refreshResults() {
+  const btn = document.getElementById('refreshBtn');
+  btn.textContent = '⏳ იტვირთება...';
+  btn.disabled = true;
+  await loadResults(currentOpId);
+  btn.textContent = '↻ განახლება';
+  btn.disabled = false;
 }
 
 // ========== DELETE OPERATION ==========

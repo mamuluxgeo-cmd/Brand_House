@@ -1,0 +1,25 @@
+{
+  "name": "Brand House · სკანერი",
+  "short_name": "BH Scan",
+  "description": "Brand House საწყობის სკანერი",
+  "start_url": "/Brand_House/scan.html",
+  "scope": "/Brand_House/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1B4332",
+  "theme_color": "#1B4332",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

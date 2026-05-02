@@ -185,13 +185,45 @@
     font-weight: 500;
     cursor: pointer;
     border: none;
-    transition: all 0.15s;
+    transition: all 0.2s;
+    position: relative;
   }
   .btn-primary { background: var(--accent); color: #fff; }
   .btn-primary:hover { background: var(--green); }
+  .btn-primary:active { transform: scale(0.97); }
   .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
   .btn-outline:hover { background: var(--bg); }
+  .btn-outline:active { transform: scale(0.97); }
   .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  /* SPINNER */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 12px; height: 12px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    flex-shrink: 0;
+  }
+
+  /* DELETE BUTTON SHAKE */
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+  }
+  .btn-delete { color: var(--red); border-color: var(--red-light) !important; }
+  .btn-delete:hover { background: var(--red-light) !important; }
+
+  /* ROW DELETE FADE */
+  @keyframes fadeOut {
+    to { opacity: 0; transform: translateX(-10px); }
+  }
+  .op-item.deleting { animation: fadeOut 0.3s ease forwards; }
 
   /* FILTER TABS */
   .filter-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
@@ -326,21 +358,25 @@
 
     <!-- Results section (when operation selected) -->
     <div id="resultsSection" style="display:none;">
-      <div style="display:flex; align-items:center; gap:12px; margin-bottom:22px;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:22px; flex-wrap:wrap;">
         <button class="btn btn-outline btn-sm" onclick="backToUpload()">← უკან</button>
         <h2 style="font-size:18px; font-weight:600;">ოპერაცია #<span id="resOpId"></span></h2>
         <span id="resStatus" class="badge"></span>
-        <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+        <div style="margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <div style="position:relative;">
-            <select id="statusSelect" onchange="toggleStatus(this.value)" style="padding:5px 28px 5px 10px; border-radius:8px; border:1px solid var(--border); font-size:12px; font-family:var(--font); background:var(--surface); color:var(--text); cursor:pointer; appearance:none; -webkit-appearance:none;">
+            <select id="statusSelect" onchange="toggleStatus(this.value)" style="padding:5px 28px 5px 10px; border-radius:8px; border:1px solid var(--border); font-size:12px; font-family:var(--font); background:var(--surface); color:var(--text); cursor:pointer; appearance:none; -webkit-appearance:none; transition:all 0.2s;">
               <option value="მიმდინარე">⏳ მიმდინარე</option>
               <option value="დასრულებული">✓ დასრულებული</option>
             </select>
             <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:10px;color:var(--muted)">▾</span>
           </div>
-          <button class="btn btn-outline btn-sm" onclick="downloadResults()">↓ Excel</button>
+          <button class="btn btn-outline btn-sm" onclick="downloadResults()" id="downloadBtn">↓ Excel</button>
           <button class="btn btn-outline btn-sm" id="refreshBtn" onclick="refreshResults()">↻ განახლება</button>
-          <button class="btn btn-outline btn-sm" style="color:var(--red); border-color:var(--red)" onclick="deleteOperation()">🗑 წაშლა</button>
+          <label class="btn btn-outline btn-sm" style="cursor:pointer;" title="ახალი ფაილის ატვირთვა">
+            📎 ახალი ფაილი
+            <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handleNewFile(this.files[0])">
+          </label>
+          <button class="btn btn-outline btn-sm btn-delete" id="deleteBtn" onclick="deleteOperation()">🗑 წაშლა</button>
         </div>
       </div>
 
@@ -718,8 +754,7 @@ function cancelUpload() {
 async function createOperation() {
   if (!parsedItems.length) return;
   const btn = document.getElementById('createBtn');
-  btn.textContent = '⏳ იქმნება...';
-  btn.disabled = true;
+  setBtnLoading(btn, true);
 
   try {
     const res = await fetch(SCRIPT_URL, {
@@ -738,8 +773,7 @@ async function createOperation() {
   } catch(e) {
     showToast('კავშირის შეცდომა');
   }
-  btn.textContent = '✓ ოპერაციის შექმნა';
-  btn.disabled = false;
+  setBtnLoading(btn, false);
 }
 
 // ========== STATUS DROPDOWN ==========
@@ -752,6 +786,8 @@ async function toggleStatus(newStatus) {
     document.getElementById('statusSelect').value = currentStatus;
     return;
   }
+  const sel = document.getElementById('statusSelect');
+  sel.disabled = true;
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -771,6 +807,7 @@ async function toggleStatus(newStatus) {
     document.getElementById('statusSelect').value = currentStatus;
     showToast('კავშირის შეცდომა');
   }
+  sel.disabled = false;
 }
 
 function updateStatusUI(status) {
@@ -781,14 +818,25 @@ function updateStatusUI(status) {
   document.getElementById('statusSelect').value = status;
 }
 
+// ========== BUTTON LOADING HELPER ==========
+function setBtnLoading(btn, loading) {
+  if (!btn) return;
+  if (loading) {
+    btn.disabled = true;
+    btn.dataset.orig = btn.innerHTML;
+    btn.innerHTML = `<span class="spinner"></span>`;
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = btn.dataset.orig || btn.innerHTML;
+  }
+}
+
 // ========== REFRESH WITH LOADING ==========
 async function refreshResults() {
   const btn = document.getElementById('refreshBtn');
-  btn.textContent = '⏳ იტვირთება...';
-  btn.disabled = true;
+  setBtnLoading(btn, true);
   await loadResults(currentOpId);
-  btn.textContent = '↻ განახლება';
-  btn.disabled = false;
+  setBtnLoading(btn, false);
 }
 
 // ========== DELETE OPERATION ==========
@@ -796,11 +844,12 @@ async function deleteOperation() {
   if (!currentOpId) return;
   if (!confirm(`⚠️ ოპერაცია #${currentOpId} სამუდამოდ წაიშლება. გააგრძელებ?`)) return;
 
+  const btn = document.getElementById('deleteBtn');
   const deletingId = currentOpId;
+  setBtnLoading(btn, true);
 
-  // დაუყოვნებლივ სიდბარიდან ამოვშალოთ (optimistic)
-  const opItem = document.querySelector(`.op-item.active`);
-  if (opItem) opItem.style.opacity = '0.3';
+  const opItem = document.querySelector('.op-item.active');
+  if (opItem) opItem.classList.add('deleting');
 
   try {
     const res = await fetch(SCRIPT_URL, {
@@ -809,21 +858,27 @@ async function deleteOperation() {
     });
     const data = await res.json();
     if (data.success) {
-      // cache-იდანაც წაშლა
       localStorage.removeItem('bh_results_' + deletingId);
       cacheSet(CACHE_OPS_KEY, null);
-
       showToast(`✓ ოპერაცია #${deletingId} წაიშალა`);
-      backToUpload();
-      loadOperationsBg();
+      setTimeout(() => { backToUpload(); loadOperationsBg(); }, 300);
     } else {
-      if (opItem) opItem.style.opacity = '1';
+      if (opItem) opItem.classList.remove('deleting');
+      setBtnLoading(btn, false);
       showToast('შეცდომა: ' + data.error);
     }
   } catch(e) {
-    if (opItem) opItem.style.opacity = '1';
+    if (opItem) opItem.classList.remove('deleting');
+    setBtnLoading(btn, false);
     showToast('კავშირის შეცდომა');
   }
+}
+
+// ========== NEW FILE UPLOAD FROM RESULTS ==========
+function handleNewFile(file) {
+  if (!file) return;
+  backToUpload();
+  setTimeout(() => handleFile(file), 100);
 }
 
 // ========== DOWNLOAD ==========

@@ -593,6 +593,7 @@ function processResults(id, opData, resData) {
   currentStatus = status;
   updateStatusUI(status);
 
+  // ჩვეულებრივი პოზიციები
   const merged = allExpected.map(exp => {
     const found = allResults.find(r => r.barcode === exp.barcode);
     if (found) {
@@ -606,10 +607,21 @@ function processResults(id, opData, resData) {
     };
   });
 
+  // უცნობი კოდები — სიაში არ იყო (expectedQty === 0)
+  const unknownResults = allResults.filter(r =>
+    r.expectedQty === 0 &&
+    !allExpected.find(e => e.barcode === r.barcode)
+  );
+  unknownResults.forEach(r => {
+    r.status = 'unknown';
+    merged.push(r);
+  });
+
   const matched = merged.filter(r => r.status === 'სწორი').length;
   const under   = merged.filter(r => r.status === 'ნაკლები' || r.status === 'pending').length;
   const over    = merged.filter(r => r.status === 'მეტობა').length;
   const pending = merged.filter(r => r.status === 'pending').length;
+  const unknown = merged.filter(r => r.status === 'unknown').length;
 
   document.getElementById('statTotal').textContent   = merged.length;
   document.getElementById('statMatched').textContent = matched;

@@ -794,21 +794,36 @@ async function refreshResults() {
 // ========== DELETE OPERATION ==========
 async function deleteOperation() {
   if (!currentOpId) return;
-  const confirm = window.confirm(`⚠️ ოპერაცია #${currentOpId} სამუდამოდ წაიშლება — ყველა მონაცემი, ჩანაწერი, შედეგი. გააგრძელებ?`);
-  if (!confirm) return;
+  if (!confirm(`⚠️ ოპერაცია #${currentOpId} სამუდამოდ წაიშლება. გააგრძელებ?`)) return;
+
+  const deletingId = currentOpId;
+
+  // დაუყოვნებლივ სიდბარიდან ამოვშალოთ (optimistic)
+  const opItem = document.querySelector(`.op-item.active`);
+  if (opItem) opItem.style.opacity = '0.3';
 
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'deleteOperation', operationId: currentOpId })
+      body: JSON.stringify({ action: 'deleteOperation', operationId: deletingId })
     });
     const data = await res.json();
     if (data.success) {
-      showToast(`✓ ოპერაცია #${currentOpId} წაიშალა`);
+      // cache-იდანაც წაშლა
+      localStorage.removeItem('bh_results_' + deletingId);
+      cacheSet(CACHE_OPS_KEY, null);
+
+      showToast(`✓ ოპერაცია #${deletingId} წაიშალა`);
       backToUpload();
-      await loadOperations();
-    } else { showToast('შეცდომა: ' + data.error); }
-  } catch(e) { showToast('კავშირის შეცდომა'); }
+      loadOperationsBg();
+    } else {
+      if (opItem) opItem.style.opacity = '1';
+      showToast('შეცდომა: ' + data.error);
+    }
+  } catch(e) {
+    if (opItem) opItem.style.opacity = '1';
+    showToast('კავშირის შეცდომა');
+  }
 }
 
 // ========== DOWNLOAD ==========

@@ -30,6 +30,8 @@
     --gray-bg: #F0EFEA;
     --blue: #1B4F8A;
     --blue-bg: #E8F0FE;
+    --purple: #6B21A8;
+    --purple-bg: #F3E8FF;
     --font: 'Noto Sans Georgian', sans-serif;
     --mono: 'DM Mono', monospace;
   }
@@ -213,6 +215,7 @@
   .item-card.over     { border-left-color: var(--orange); background: #FFFEF8; }
   .item-card.under    { border-left-color: var(--red); background: #FFFAFA; }
   .item-card.pending  { border-left-color: var(--border); background: var(--gray-bg); }
+  .item-card.unknown  { border-left-color: var(--purple); background: #FDF8FF; }
   .item-card.flash    { transform: scale(1.01); }
 
   .item-info { flex: 1; min-width: 0; }
@@ -223,6 +226,7 @@
   .item-status.red   { color: var(--red); }
   .item-status.orange { color: var(--orange); }
   .item-status.muted  { color: var(--muted); }
+  .item-status.purple { color: var(--purple); }
 
   .item-qty {
     text-align: right;
@@ -233,6 +237,7 @@
   .item-qty .nums.red    { color: var(--red); }
   .item-qty .nums.orange { color: var(--orange); }
   .item-qty .nums.muted  { color: var(--muted); }
+  .item-qty .nums.purple { color: var(--purple); }
   .item-qty .denom { font-size: 11px; color: var(--muted); font-family: var(--mono); }
 
   /* BOTTOM BAR */
@@ -328,6 +333,7 @@
   .log-dot.green  { background: var(--green); }
   .log-dot.red    { background: var(--red); }
   .log-dot.orange { background: var(--orange); }
+  .log-dot.purple { background: var(--purple); }
 
   /* ========== MODAL: SUMMARY ========== */
   .summary-modal {
@@ -503,6 +509,7 @@
     <span class="ftab" onclick="setFilter('under', this)">− ნაკლები <span id="cntUnder">0</span></span>
     <span class="ftab" onclick="setFilter('over', this)">+ მეტობა <span id="cntOver">0</span></span>
     <span class="ftab" onclick="setFilter('pending', this)">○ ელოდება <span id="cntPending">0</span></span>
+    <span class="ftab" onclick="setFilter('unknown', this)" style="color:var(--purple)">? უცნობი <span id="cntUnknown">0</span></span>
   </div>
 
   <div class="scan-input-wrap">
@@ -596,6 +603,10 @@
         <div class="label" style="color:var(--muted)">ელოდება</div>
         <div class="value" style="color:var(--muted)" id="sumPending">0</div>
       </div>
+      <div class="summary-stat" style="background:var(--purple-bg); grid-column: span 2">
+        <div class="label" style="color:var(--purple)">უცნობი კოდი (სიაში არ იყო)</div>
+        <div class="value" style="color:var(--purple)" id="sumUnknown">0</div>
+      </div>
     </div>
     <div style="display:flex; gap:10px;">
       <button class="btn-log" onclick="closeSummary()" style="flex:1">გაუქმება</button>
@@ -618,6 +629,7 @@ if ('serviceWorker' in navigator) {
 
 // STATE
 let items = {};        // barcode → { productName, colorSize, expectedQty, scannedQty }
+let unknownItems = {}; // barcode → { scannedQty } — სიაში არ იყო
 let scanLog = [];      // { time, barcode, status }
 let currentFilter = 'all';
 let operationId = null;
@@ -649,6 +661,7 @@ async function loadOperation() {
       const session = JSON.parse(saved);
       if (confirm('ნახვეული სესია ნაპოვნია ოპერაცია #' + opId + '-ზე. გავაგრძელოთ?')) {
         items = session.items;
+        unknownItems = session.unknownItems || {};
         scanLog = session.scanLog || [];
         startScan(emp, opId);
         return;
@@ -669,6 +682,7 @@ async function loadOperation() {
 
     // Build items map
     items = {};
+    unknownItems = {};
     data.items.forEach(item => {
       items[item.barcode] = {
         productName: item.productName,
@@ -735,10 +749,23 @@ function processBarcode() {
   barcodeInput.value = '';
   if (!code) return;
 
+  const now = new Date();
+  const timeStr = now.toTimeString().slice(0,8);
+
   const item = items[code];
   if (!item) {
+    // უცნობი ბარკოდი — შევინახოთ
+    if (!unknownItems[code]) {
+      unknownItems[code] = { scannedQty: 0 };
+    }
+    unknownItems[code].scannedQty++;
+    saveSession();
+    vibrate([300]);  // გრძელი ვიბრაცია
     showUnknown(code);
-    vibrate([100, 50, 100]);
+    scanLog.unshift({ time: timeStr, barcode: code, status: 'unknown' });
+    updateCounts();
+    renderItems();
+    focusInput();
     return;
   }
 
@@ -747,8 +774,6 @@ function processBarcode() {
   vibrate([50]);
 
   // Log entry
-  const now = new Date();
-  const timeStr = now.toTimeString().slice(0,8);
   const diff = item.scannedQty - item.expectedQty;
   const status = diff === 0 ? 'matched' : diff > 0 ? 'over' : 'under';
   scanLog.unshift({ time: timeStr, barcode: code, status });
@@ -785,6 +810,27 @@ function renderItems() {
   let entries = Object.entries(items);
 
   // Filter
+  if (currentFilter === 'unknown') {
+    // უცნობი ბარკოდები
+    const unknownEntries = Object.entries(unknownItems);
+    if (!unknownEntries.length) {
+      list.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>უცნობი კოდები არ არის</p></div>';
+      return;
+    }
+    list.innerHTML = unknownEntries.map(([barcode, item]) => `
+      <div class="item-card unknown">
+        <div class="item-info">
+          <div class="item-barcode">${barcode}</div>
+          <div class="item-name">უცნობი პროდუქცია</div>
+          <div class="item-status purple">⚠ სიაში არ იყო</div>
+        </div>
+        <div class="item-qty">
+          <div class="nums purple">${item.scannedQty}<span class="denom">/—</span></div>
+        </div>
+      </div>`).join('');
+    return;
+  }
+
   if (currentFilter !== 'all') {
     entries = entries.filter(([, item]) => getStatus(item) === currentFilter);
   }
@@ -804,7 +850,7 @@ function renderItems() {
     return;
   }
 
-  list.innerHTML = entries.map(([barcode, item]) => {
+  let html = entries.map(([barcode, item]) => {
     const status = getStatus(item);
     const diff = item.scannedQty - item.expectedQty;
     const colorClass = status === 'matched' ? 'green' : status === 'over' ? 'orange' : status === 'under' ? 'red' : 'muted';
@@ -823,6 +869,24 @@ function renderItems() {
       </div>
     </div>`;
   }).join('');
+
+  // "ყველა" ფილტრის დროს უცნობები ბოლოში
+  if (currentFilter === 'all' && Object.keys(unknownItems).length > 0) {
+    html += `<div class="section-label" style="color:var(--purple);margin-top:10px">⚠ უცნობი კოდები (სიაში არ იყო)</div>`;
+    html += Object.entries(unknownItems).map(([barcode, item]) => `
+      <div class="item-card unknown">
+        <div class="item-info">
+          <div class="item-barcode">${barcode}</div>
+          <div class="item-name">უცნობი პროდუქცია</div>
+          <div class="item-status purple">⚠ სიაში არ იყო</div>
+        </div>
+        <div class="item-qty">
+          <div class="nums purple">${item.scannedQty}<span class="denom">/—</span></div>
+        </div>
+      </div>`).join('');
+  }
+
+  list.innerHTML = html;
 }
 
 function updateCounts() {
@@ -832,12 +896,14 @@ function updateCounts() {
   const over    = vals.filter(i => getStatus(i) === 'over').length;
   const pending = vals.filter(i => getStatus(i) === 'pending').length;
   const all     = vals.length;
+  const unknown = Object.keys(unknownItems).length;
 
   document.getElementById('cntAll').textContent     = all;
   document.getElementById('cntMatched').textContent = matched;
   document.getElementById('cntUnder').textContent   = under;
   document.getElementById('cntOver').textContent    = over;
   document.getElementById('cntPending').textContent = pending;
+  document.getElementById('cntUnknown').textContent = unknown;
 }
 
 function setFilter(filter, el) {
@@ -851,7 +917,7 @@ function setFilter(filter, el) {
 // ========== SESSION SAVE ==========
 function saveSession() {
   try {
-    localStorage.setItem('bh_session_' + operationId, JSON.stringify({ items, scanLog }));
+    localStorage.setItem('bh_session_' + operationId, JSON.stringify({ items, unknownItems, scanLog }));
   } catch(e) {}
 }
 
@@ -925,8 +991,8 @@ function showLog() {
     body.innerHTML = scanLog.map(entry => `
       <div class="log-item">
         <span class="log-time">${entry.time}</span>
-        <div class="log-dot ${entry.status === 'matched' ? 'green' : entry.status === 'over' ? 'orange' : 'red'}"></div>
-        <span class="log-barcode">${entry.barcode}</span>
+        <div class="log-dot ${entry.status === 'matched' ? 'green' : entry.status === 'over' ? 'orange' : entry.status === 'unknown' ? 'purple' : 'red'}"></div>
+        <span class="log-barcode">${entry.barcode}${entry.status === 'unknown' ? ' ⚠' : ''}</span>
       </div>
     `).join('');
   }
@@ -945,6 +1011,7 @@ function showSummary() {
   const under   = vals.filter(i => getStatus(i) === 'under').length;
   const over    = vals.filter(i => getStatus(i) === 'over').length;
   const pending = vals.filter(i => getStatus(i) === 'pending').length;
+  const unknown = Object.keys(unknownItems).length;
 
   document.getElementById('summaryOpInfo').textContent =
     `ოპერაცია #${operationId} · ${employeeName} · სულ ${vals.length} პოზიცია`;
@@ -952,6 +1019,7 @@ function showSummary() {
   document.getElementById('sumUnder').textContent   = under;
   document.getElementById('sumOver').textContent    = over;
   document.getElementById('sumPending').textContent = pending;
+  document.getElementById('sumUnknown').textContent = unknown;
 
   document.getElementById('summaryModal').classList.add('show');
 }
@@ -974,6 +1042,17 @@ async function sendResults() {
     scannedQty: item.scannedQty
   }));
 
+  // უცნობი კოდები — ბოლოში დავამატოთ
+  Object.entries(unknownItems).forEach(([barcode, item]) => {
+    results.push({
+      barcode,
+      productName: '⚠ უცნობი პროდუქცია',
+      colorSize: '—',
+      expectedQty: 0,
+      scannedQty: item.scannedQty
+    });
+  });
+
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -987,7 +1066,6 @@ async function sendResults() {
     const data = await res.json();
 
     if (data.success) {
-      // Clear session
       localStorage.removeItem('bh_session_' + operationId);
       closeSummary();
       showToast('✓ წარმატებით გაიგზავნა!');

@@ -2,7 +2,7 @@
 <html lang="ka">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1B4332">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,1086 +12,879 @@
 <link rel="apple-touch-icon" href="logo.png">
 <title>Brand House · სკანერი</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
   :root {
-    --bg: #F7F6F2;
+    --bg: #F4F3EF;
     --surface: #FFFFFF;
-    --border: #E4E2DC;
-    --text: #1A1A18;
-    --muted: #7A7870;
+    --border: #E2E0D8;
+    --text: #18180F;
+    --muted: #79776E;
     --accent: #1B4332;
-    --green: #2D6A4F;
-    --green-bg: #D8F3DC;
-    --red: #C1121F;
-    --red-bg: #FFE8E9;
-    --orange: #CA6702;
-    --orange-bg: #FFF3CD;
-    --gray-bg: #F0EFEA;
-    --blue: #1B4F8A;
-    --blue-bg: #E8F0FE;
+    --accent2: #2D6A4F;
+    --green: #1E6641;
+    --green-bg: #D3F0DC;
+    --red: #B91C1C;
+    --red-bg: #FEE2E2;
+    --orange: #B45309;
+    --orange-bg: #FEF3C7;
     --purple: #6B21A8;
-    --purple-bg: #F3E8FF;
+    --purple-bg: #EDE9FE;
     --font: 'Noto Sans Georgian', sans-serif;
     --mono: 'DM Mono', monospace;
+    --r: 12px;
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh; overscroll-behavior: none; }
 
-  /* SCREENS */
-  .screen { display: none; flex-direction: column; min-height: 100vh; }
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .screen { display: none; flex-direction: column; height: 100dvh; overflow: hidden; }
   .screen.active { display: flex; }
 
-  /* ========== SCREEN 1: WELCOME ========== */
-  .welcome {
-    justify-content: center;
-    align-items: center;
-    padding: 32px 24px;
-    text-align: center;
-    gap: 0;
-  }
-  .logo-wrap { margin-bottom: 28px; }
-  .logo-wrap img { width: 72px; height: 72px; object-fit: contain; border-radius: 16px; background: var(--accent); padding: 10px; }
-  .logo-placeholder {
-    width: 72px; height: 72px; border-radius: 16px; background: var(--accent);
-    display: flex; align-items: center; justify-content: center; margin: 0 auto;
-    color: #fff; font-size: 24px; font-weight: 600;
-  }
-  .welcome h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
-  .welcome .sub { color: var(--muted); font-size: 13px; margin-bottom: 32px; }
-
-  .form-group { width: 100%; max-width: 320px; margin-bottom: 14px; text-align: left; }
-  .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
-  .form-group input {
-    width: 100%;
-    padding: 13px 16px;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    font-size: 15px;
-    font-family: var(--font);
-    background: var(--surface);
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .form-group input:focus { border-color: var(--accent); }
-  .form-group input.mono-input { font-family: var(--mono); font-size: 20px; letter-spacing: 0.05em; }
-
-  .btn-big {
-    width: 100%;
-    max-width: 320px;
-    padding: 15px;
+  /* ===== WELCOME ===== */
+  #screenWelcome {
     background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    font-size: 15px;
-    font-family: var(--font);
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 6px;
-    transition: background 0.2s, transform 0.1s;
+    justify-content: flex-end;
   }
-  .btn-big:active { transform: scale(0.98); }
-  .btn-big:disabled { opacity: 0.5; }
 
-  /* ========== SCREEN 2: SCAN ========== */
-  .scan-screen { background: var(--bg); }
+  .welcome-top {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: max(var(--sat), 40px) 28px 20px;
+  }
 
-  /* HEADER */
+  .logo-ring {
+    width: 80px; height: 80px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.12);
+    border: 1.5px solid rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 18px; overflow: hidden;
+  }
+  .logo-ring img { width: 56px; height: 56px; object-fit: contain; }
+  .logo-ph { font-size: 26px; font-weight: 700; color: #fff; }
+
+  .w-title { font-size: 26px; font-weight: 700; color: #fff; letter-spacing: -0.5px; margin-bottom: 4px; }
+  .w-sub { font-size: 12px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.07em; }
+
+  .resume-banner {
+    display: none; width: 100%; max-width: 360px; margin-top: 20px;
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: var(--r); padding: 14px 16px; cursor: pointer; text-align: left;
+  }
+  .resume-banner.show { display: block; }
+  .resume-banner:active { background: rgba(255,255,255,0.2); }
+  .rb-lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 3px; }
+  .rb-main { font-size: 15px; font-weight: 600; color: #fff; }
+  .rb-sub { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+
+  .welcome-card {
+    background: var(--surface); border-radius: 22px 22px 0 0;
+    padding: 24px 22px max(var(--sab), 16px); display: flex; flex-direction: column; gap: 13px;
+  }
+  .f-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 7px; }
+  .f-input {
+    width: 100%; padding: 15px 16px; border: 1.5px solid var(--border); border-radius: var(--r);
+    font-size: 16px; font-family: var(--font); background: #FAFAF8; color: var(--text);
+    outline: none; transition: border-color 0.15s; -webkit-appearance: none;
+  }
+  .f-input:focus { border-color: var(--accent); background: var(--surface); }
+  .f-input.mono { font-family: var(--mono); font-size: 20px; letter-spacing: 0.04em; }
+
+  .btn-primary {
+    width: 100%; padding: 17px; background: var(--accent); color: #fff; border: none;
+    border-radius: var(--r); font-size: 16px; font-family: var(--font); font-weight: 700;
+    cursor: pointer; -webkit-appearance: none; transition: transform 0.1s, background 0.15s;
+  }
+  .btn-primary:active { transform: scale(0.98); background: var(--accent2); }
+  .btn-primary:disabled { opacity: 0.45; }
+
+  .load-msg { font-size: 13px; color: var(--red); min-height: 16px; text-align: center; padding-bottom: 4px; }
+
+  /* ===== SCAN SCREEN ===== */
+  #screenScan { background: var(--bg); }
+
   .scan-header {
     background: var(--accent);
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: #fff;
-    flex-shrink: 0;
+    padding: max(var(--sat), 14px) 14px 12px;
+    display: flex; align-items: center; gap: 8px; color: #fff; flex-shrink: 0;
   }
-  .scan-header .op-badge {
-    font-family: var(--mono);
-    font-size: 16px;
-    font-weight: 500;
-    background: rgba(255,255,255,0.15);
-    padding: 4px 10px;
-    border-radius: 8px;
+  .op-pill {
+    font-family: var(--mono); font-size: 15px; font-weight: 500;
+    background: rgba(255,255,255,0.15); padding: 5px 11px; border-radius: 20px;
   }
-  .scan-header .emp { font-size: 12px; opacity: 0.7; margin-left: auto; }
+  .h-emp {
+    flex: 1; font-size: 13px; opacity: 0.7;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
+  }
+  #wakeDot {
+    width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.25); flex-shrink: 0;
+  }
+  #wakeDot.on { background: #4ADE80; }
 
-  /* FILTER TABS */
+  .btn-exit {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.85); border-radius: 8px; padding: 6px 12px;
+    font-size: 12px; font-family: var(--font); font-weight: 600; cursor: pointer;
+    flex-shrink: 0; white-space: nowrap;
+  }
+  .btn-exit:active { background: rgba(255,255,255,0.22); }
+
   .filter-bar {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 10px 14px;
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    flex-shrink: 0;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 9px 12px; display: flex; gap: 6px; overflow-x: auto; flex-shrink: 0;
+    scrollbar-width: none;
   }
   .filter-bar::-webkit-scrollbar { display: none; }
   .ftab {
-    flex-shrink: 0;
-    padding: 5px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-    border: 1.5px solid var(--border);
-    background: var(--surface);
-    cursor: pointer;
-    color: var(--text);
-    transition: all 0.15s;
-    white-space: nowrap;
+    flex-shrink: 0; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    border: 1.5px solid var(--border); background: var(--surface); cursor: pointer;
+    color: var(--muted); white-space: nowrap; transition: all 0.15s;
   }
+  .ftab .n { font-family: var(--mono); font-size: 11px; margin-left: 2px; }
   .ftab.active { background: var(--text); color: #fff; border-color: var(--text); }
+  .ftab.active .n { color: rgba(255,255,255,0.65); }
 
-  /* SCAN INPUT */
   .scan-input-wrap {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 12px 14px;
-    flex-shrink: 0;
+    background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 12px; flex-shrink: 0;
   }
-  .scan-input-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; }
-  .scan-input-row { display: flex; align-items: center; gap: 8px; }
+  .sil { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .sir { display: flex; align-items: center; gap: 8px; }
   #barcodeInput {
-    flex: 1;
-    padding: 11px 14px;
-    border: 2px solid var(--accent);
-    border-radius: 10px;
-    font-size: 15px;
-    font-family: var(--mono);
-    background: var(--surface);
-    color: var(--text);
-    outline: none;
-    letter-spacing: 0.03em;
+    flex: 1; padding: 13px 14px; border: 2px solid var(--accent); border-radius: var(--r);
+    font-size: 16px; font-family: var(--mono); background: var(--surface); color: var(--text);
+    outline: none; -webkit-appearance: none;
   }
   .clear-btn {
-    padding: 11px 14px;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    background: var(--surface);
-    font-size: 14px;
-    cursor: pointer;
-    color: var(--muted);
+    width: 44px; height: 44px; border: 1.5px solid var(--border); border-radius: var(--r);
+    background: #F4F3EF; font-size: 15px; cursor: pointer; color: var(--muted);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
-  .scan-count-row {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 8px;
-    font-size: 11px;
-    color: var(--muted);
+  .scan-stats {
+    display: flex; justify-content: space-between; margin-top: 7px;
+    font-size: 11px; color: var(--muted); padding: 0 1px;
   }
-  .scan-count-row .count { font-weight: 600; color: var(--text); font-family: var(--mono); }
+  .scan-stats strong { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--text); }
 
-  /* ITEMS LIST */
   .items-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px 14px;
-    padding-bottom: 90px;
+    flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
+    padding: 8px 12px calc(80px + max(var(--sab), 10px)); scrollbar-width: none;
   }
+  .items-list::-webkit-scrollbar { display: none; }
 
-  .section-label {
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 8px 0 5px;
+  .sec-label {
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.09em; padding: 8px 0 4px;
   }
 
   .item-card {
-    background: var(--surface);
-    border-radius: 10px;
-    padding: 11px 14px;
-    margin-bottom: 6px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border-left: 4px solid transparent;
-    transition: transform 0.1s;
+    background: var(--surface); border-radius: var(--r); padding: 12px 14px; margin-bottom: 5px;
+    display: flex; align-items: center; gap: 10px; border-left: 4px solid transparent;
+    cursor: pointer; transition: transform 0.1s; -webkit-user-select: none; user-select: none;
   }
-  .item-card.matched  { border-left-color: var(--green); background: #FAFFFE; }
-  .item-card.over     { border-left-color: var(--orange); background: #FFFEF8; }
-  .item-card.under    { border-left-color: var(--red); background: #FFFAFA; }
-  .item-card.pending  { border-left-color: var(--border); background: var(--gray-bg); }
-  .item-card.unknown  { border-left-color: var(--purple); background: #FDF8FF; }
-  .item-card.flash    { transform: scale(1.01); }
+  .item-card:active { transform: scale(0.99); }
+  .item-card.matched { border-left-color: var(--green); }
+  .item-card.over    { border-left-color: var(--orange); }
+  .item-card.under   { border-left-color: var(--red); }
+  .item-card.pending { border-left-color: var(--border); background: #FAFAF8; }
+  .item-card.unknown { border-left-color: var(--purple); }
 
-  .item-info { flex: 1; min-width: 0; }
-  .item-barcode { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-  .item-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .item-status { font-size: 11px; margin-top: 2px; }
-  .item-status.green { color: var(--green); }
-  .item-status.red   { color: var(--red); }
-  .item-status.orange { color: var(--orange); }
-  .item-status.muted  { color: var(--muted); }
-  .item-status.purple { color: var(--purple); }
+  .ic-info { flex: 1; min-width: 0; }
+  .ic-bc { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .ic-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+  .ic-sub { display: flex; align-items: center; gap: 6px; }
+  .ic-color { font-size: 11px; color: var(--muted); }
 
-  .item-qty {
-    text-align: right;
-    flex-shrink: 0;
+  .badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 20px; letter-spacing: 0.02em; white-space: nowrap;
   }
-  .item-qty .nums { font-family: var(--mono); font-size: 16px; font-weight: 600; }
-  .item-qty .nums.green  { color: var(--green); }
-  .item-qty .nums.red    { color: var(--red); }
-  .item-qty .nums.orange { color: var(--orange); }
-  .item-qty .nums.muted  { color: var(--muted); }
-  .item-qty .nums.purple { color: var(--purple); }
-  .item-qty .denom { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  .bg-green  { background: var(--green-bg);  color: var(--green); }
+  .bg-red    { background: var(--red-bg);    color: var(--red); }
+  .bg-orange { background: var(--orange-bg); color: var(--orange); }
+  .bg-muted  { background: #EBEBEB; color: var(--muted); }
+  .bg-purple { background: var(--purple-bg); color: var(--purple); }
 
-  /* BOTTOM BAR */
+  .ic-qty { text-align: right; flex-shrink: 0; }
+  .qty-n {
+    font-family: var(--mono); font-size: 20px; font-weight: 700; line-height: 1;
+  }
+  .qty-n.green  { color: var(--green); }
+  .qty-n.red    { color: var(--red); }
+  .qty-n.orange { color: var(--orange); }
+  .qty-n.muted  { color: var(--muted); }
+  .qty-n.purple { color: var(--purple); }
+  .qty-den { font-size: 11px; color: var(--muted); font-family: var(--mono); font-weight: 400; }
+  .edit-hint { font-size: 10px; color: #D0CFC8; margin-top: 3px; }
+
+  /* bottom bar */
   .bottom-bar {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    padding: 10px 14px;
-    display: flex;
-    gap: 10px;
-    z-index: 100;
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 10px 12px max(var(--sab), 10px); display: flex; gap: 8px; z-index: 100;
   }
-  .btn-log {
-    flex: 1;
-    padding: 13px;
-    background: var(--gray-bg);
-    border: 1.5px solid var(--border);
-    border-radius: 12px;
-    font-size: 13px;
-    font-family: var(--font);
-    font-weight: 500;
-    cursor: pointer;
-    color: var(--text);
+  .btn-sec {
+    flex: 1; padding: 14px 10px; background: #F4F3EF; border: 1.5px solid var(--border);
+    border-radius: var(--r); font-size: 13px; font-family: var(--font); font-weight: 600;
+    cursor: pointer; color: var(--text); -webkit-appearance: none;
   }
+  .btn-sec:active { background: var(--border); }
   .btn-send {
-    flex: 2;
-    padding: 13px;
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    font-size: 14px;
-    font-family: var(--font);
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
+    flex: 2.5; padding: 14px 10px; background: var(--accent); color: #fff; border: none;
+    border-radius: var(--r); font-size: 15px; font-family: var(--font); font-weight: 700;
+    cursor: pointer; -webkit-appearance: none; transition: transform 0.1s, background 0.15s;
   }
-  .btn-send:active { transform: scale(0.98); }
+  .btn-send:active { transform: scale(0.98); background: var(--accent2); }
   .btn-send:disabled { opacity: 0.5; }
 
-  /* UNKNOWN BARCODE FLASH */
+  /* flash */
   #unknownFlash {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    background: var(--red);
-    color: #fff;
-    padding: 10px;
-    text-align: center;
-    font-size: 13px;
-    font-weight: 500;
-    transform: translateY(-100%);
-    transition: transform 0.25s;
-    z-index: 200;
+    position: fixed; top: 0; left: 0; right: 0; background: var(--red); color: #fff;
+    padding: max(var(--sat), 12px) 16px 12px; text-align: center; font-size: 13px;
+    font-weight: 600; transform: translateY(-100%); transition: transform 0.2s; z-index: 300;
   }
   #unknownFlash.show { transform: translateY(0); }
 
-  /* ========== MODAL: LOG ========== */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 500;
-    align-items: flex-end;
+  /* modals */
+  .mo {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 500;
+    align-items: flex-end; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
   }
-  .modal-overlay.show { display: flex; }
-  .modal-sheet {
-    background: var(--surface);
-    border-radius: 18px 18px 0 0;
-    width: 100%;
-    max-height: 70vh;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-  .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 0; }
-  .modal-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-  .modal-header h3 { font-size: 15px; font-weight: 600; }
-  .modal-close { background: var(--gray-bg); border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 14px; cursor: pointer; }
-  .modal-body { overflow-y: auto; flex: 1; padding: 8px 0; }
+  .mo.show { display: flex; }
 
-  .log-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 18px;
-    border-bottom: 1px solid var(--border);
+  .ms {
+    background: var(--surface); border-radius: 20px 20px 0 0; width: 100%;
+    max-height: 82dvh; display: flex; flex-direction: column;
+    padding-bottom: max(var(--sab), 0px); overflow: hidden;
   }
-  .log-time { font-family: var(--mono); font-size: 12px; color: var(--muted); flex-shrink: 0; }
-  .log-barcode { font-family: var(--mono); font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; }
-  .log-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .log-dot.green  { background: var(--green); }
-  .log-dot.red    { background: var(--red); }
-  .log-dot.orange { background: var(--orange); }
-  .log-dot.purple { background: var(--purple); }
+  .mh { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 0; flex-shrink: 0; }
+  .mhead {
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .mhead h3 { font-size: 16px; font-weight: 700; }
+  .mclose {
+    background: #F4F3EF; border: none; width: 30px; height: 30px; border-radius: 50%;
+    font-size: 14px; cursor: pointer; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mbody { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
 
-  /* ========== MODAL: SUMMARY ========== */
-  .summary-modal {
-    background: var(--surface);
-    border-radius: 18px 18px 0 0;
-    width: 100%;
-    padding: 24px 20px;
+  .log-row {
+    display: flex; align-items: center; gap: 12px; padding: 11px 18px; border-bottom: 1px solid var(--border);
   }
-  .summary-title { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
-  .summary-sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
-  .summary-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-  .summary-stat { padding: 14px; border-radius: 10px; text-align: center; }
-  .summary-stat .label { font-size: 11px; margin-bottom: 4px; }
-  .summary-stat .value { font-size: 24px; font-weight: 600; font-family: var(--mono); }
+  .log-t { font-family: var(--mono); font-size: 12px; color: var(--muted); flex-shrink: 0; }
+  .log-b { font-family: var(--mono); font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot.green  { background: var(--green); }
+  .dot.red    { background: var(--red); }
+  .dot.orange { background: var(--orange); }
+  .dot.purple { background: var(--purple); }
 
-  /* ========== ITEM DETAIL MODAL ========== */
-  .detail-modal {
-    background: var(--surface);
-    border-radius: 18px 18px 0 0;
-    width: 100%;
-    padding: 0 0 24px;
+  /* summary sheet */
+  .sum-sheet {
+    background: var(--surface); border-radius: 20px 20px 0 0; width: 100%;
+    padding-bottom: max(var(--sab), 20px);
   }
-  .detail-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-  }
-  .detail-barcode { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-bottom: 2px; }
-  .detail-name { font-size: 16px; font-weight: 600; }
-  .detail-color { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .sum-inner { padding: 20px 20px 0; }
+  .sum-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 3px; }
+  .sum-sub { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+  .sum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+  .sstat { padding: 14px; border-radius: var(--r); text-align: center; }
+  .sstat .slbl { font-size: 11px; font-weight: 600; margin-bottom: 5px; }
+  .sstat .sval { font-size: 28px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+  .sstat.wide { grid-column: span 2; }
+  .sum-btns { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
 
-  .detail-body { padding: 16px 20px; }
+  /* exit sheet */
+  .exit-sheet {
+    background: var(--surface); border-radius: 20px 20px 0 0; width: 100%;
+    padding: 24px 22px max(var(--sab), 22px);
+  }
+  .exit-icon { font-size: 38px; text-align: center; margin-bottom: 12px; }
+  .exit-title { font-size: 19px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+  .exit-sub { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 22px; line-height: 1.55; }
+  .exit-btns { display: flex; flex-direction: column; gap: 9px; }
 
-  .qty-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-  .qty-box {
-    flex: 1;
-    background: var(--bg);
-    border-radius: 10px;
-    padding: 12px;
-    text-align: center;
-  }
-  .qty-box .ql { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
-  .qty-box .qv { font-size: 24px; font-weight: 600; font-family: var(--mono); }
-  .qty-box .qv.green { color: var(--green); }
-  .qty-box .qv.red   { color: var(--red); }
-  .qty-box .qv.orange { color: var(--orange); }
+  .btn-full { width: 100%; border-radius: var(--r); font-family: var(--font); font-weight: 700; cursor: pointer; -webkit-appearance: none; }
+  .btn-send-full { padding: 16px; background: var(--accent); color: #fff; border: none; font-size: 16px; }
+  .btn-send-full:active { background: var(--accent2); }
+  .btn-danger { padding: 14px; background: transparent; color: var(--red); border: 1.5px solid var(--red-bg); font-size: 14px; font-weight: 600; }
+  .btn-danger:active { background: var(--red-bg); }
+  .btn-cancel { padding: 14px; background: #F4F3EF; border: 1.5px solid var(--border); color: var(--text); font-size: 14px; }
+  .btn-cancel:active { background: var(--border); }
 
-  .edit-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
-  .qty-editor {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    border: 1.5px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 16px;
-  }
-  .qty-btn {
-    width: 52px;
-    height: 52px;
-    background: var(--bg);
-    border: none;
-    font-size: 22px;
-    cursor: pointer;
-    color: var(--text);
-    flex-shrink: 0;
-    transition: background 0.1s;
-  }
-  .qty-btn:active { background: var(--border); }
-  .qty-input {
-    flex: 1;
-    text-align: center;
-    font-size: 22px;
-    font-family: var(--mono);
-    font-weight: 600;
-    border: none;
-    outline: none;
-    background: transparent;
-    color: var(--text);
-    padding: 0;
-  }
-  .btn-save {
-    width: 100%;
-    padding: 14px;
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    font-size: 15px;
-    font-family: var(--font);
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .btn-reset {
-    width: 100%;
-    padding: 11px;
-    background: transparent;
-    color: var(--red);
-    border: 1.5px solid var(--red-bg);
-    border-radius: 12px;
-    font-size: 13px;
-    font-family: var(--font);
-    font-weight: 500;
-    cursor: pointer;
-    margin-top: 8px;
-  }
+  /* detail sheet */
+  .det-sheet { background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; padding-bottom: max(var(--sab), 20px); }
+  .det-head { padding: 16px 20px 14px; border-bottom: 1px solid var(--border); }
+  .det-bc { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+  .det-name { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+  .det-color { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .det-body { padding: 16px 20px; }
 
-  /* ========== TOAST ========== */
+  .qrow { display: flex; gap: 8px; margin-bottom: 18px; }
+  .qbox { flex: 1; background: var(--bg); border-radius: var(--r); padding: 12px 8px; text-align: center; }
+  .qlbl { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+  .qval { font-size: 26px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+  .qval.green { color: var(--green); }
+  .qval.red   { color: var(--red); }
+  .qval.orange { color: var(--orange); }
+
+  .elbl { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+  .qedit { display: flex; align-items: center; border: 1.5px solid var(--border); border-radius: var(--r); overflow: hidden; margin-bottom: 14px; }
+  .qbtn { width: 58px; height: 58px; background: var(--bg); border: none; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .qbtn:active { background: var(--border); }
+  .qinput { flex: 1; text-align: center; font-size: 28px; font-family: var(--mono); font-weight: 700; border: none; outline: none; background: transparent; color: var(--text); -webkit-appearance: none; }
+
+  .btn-save { width: 100%; padding: 16px; background: var(--accent); color: #fff; border: none; border-radius: var(--r); font-size: 16px; font-family: var(--font); font-weight: 700; cursor: pointer; -webkit-appearance: none; }
+  .btn-save:active { background: var(--accent2); }
+  .btn-reset { width: 100%; padding: 12px; background: transparent; color: var(--muted); border: 1.5px solid var(--border); border-radius: var(--r); font-size: 13px; font-family: var(--font); font-weight: 500; cursor: pointer; margin-top: 8px; }
+
   .toast {
-    position: fixed;
-    bottom: 90px;
-    left: 50%;
+    position: fixed; left: 50%;
+    bottom: calc(80px + max(var(--sab), 10px));
     transform: translateX(-50%) translateY(10px);
-    background: var(--text);
-    color: #fff;
-    padding: 10px 20px;
-    border-radius: 30px;
-    font-size: 13px;
-    z-index: 1000;
-    opacity: 0;
-    transition: all 0.3s;
-    white-space: nowrap;
+    background: var(--text); color: #fff; padding: 11px 22px; border-radius: 30px;
+    font-size: 13px; font-weight: 600; z-index: 1000; opacity: 0; pointer-events: none;
+    white-space: nowrap; transition: all 0.25s cubic-bezier(0.22,1,0.36,1);
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  .empty-state {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--muted);
-  }
-  .empty-state .icon { font-size: 36px; margin-bottom: 10px; }
+  .empty { text-align: center; padding: 48px 20px; color: var(--muted); }
+  .empty .ei { font-size: 40px; margin-bottom: 10px; }
 </style>
 </head>
 <body>
 
-<!-- UNKNOWN FLASH -->
 <div id="unknownFlash">⚠️ ბარკოდი ვერ მოიძებნა</div>
 
-<!-- ========== SCREEN 1: WELCOME ========== -->
-<div class="screen welcome active" id="screenWelcome">
-  <div class="logo-wrap">
-    <img src="logo.png" alt="BH" onerror="this.outerHTML='<div class=logo-placeholder>BH</div>'">
+<!-- WELCOME -->
+<div class="screen active" id="screenWelcome">
+  <div class="welcome-top">
+    <div class="logo-ring">
+      <img src="logo.png" alt="BH" onerror="this.outerHTML='<span class=logo-ph>BH</span>'">
+    </div>
+    <div class="w-title">Brand House</div>
+    <div class="w-sub">საწყობის სკანერი</div>
+    <div class="resume-banner" id="resumeBanner" onclick="doResume()">
+      <div class="rb-lbl">გაგრძელება ↗</div>
+      <div class="rb-main" id="resumeMain"></div>
+      <div class="rb-sub" id="resumeSub"></div>
+    </div>
   </div>
-  <h1>Brand House</h1>
-  <p class="sub">საწყობის სკანერი</p>
-
-  <div class="form-group">
-    <label>შენი სახელი</label>
-    <input type="text" id="empNameInput" placeholder="მაგ: გიორგი" autocomplete="name">
+  <div class="welcome-card">
+    <div>
+      <div class="f-label">შენი სახელი</div>
+      <input type="text" class="f-input" id="empNameInput" placeholder="მაგ: გიორგი" autocomplete="given-name" autocorrect="off">
+    </div>
+    <div>
+      <div class="f-label">ოპერაციის ნომერი</div>
+      <input type="number" class="f-input mono" id="opIdInput" placeholder="1001" inputmode="numeric">
+    </div>
+    <button class="btn-primary" onclick="loadOperation()" id="loadBtn">ჩატვირთვა →</button>
+    <div class="load-msg" id="loadMsg"></div>
   </div>
-  <div class="form-group">
-    <label>ოპერაციის ნომერი</label>
-    <input type="number" id="opIdInput" placeholder="მაგ: 1001" class="mono-input" inputmode="numeric">
-  </div>
-  <button class="btn-big" onclick="loadOperation()" id="loadBtn">ჩატვირთვა →</button>
-  <p style="margin-top:14px; font-size:12px; color:var(--muted)" id="loadMsg"></p>
 </div>
 
-<!-- ========== SCREEN 2: SCAN ========== -->
-<div class="screen scan-screen" id="screenScan">
+<!-- SCAN -->
+<div class="screen" id="screenScan">
   <div class="scan-header">
-    <span class="op-badge" id="headerOpId">#—</span>
-    <span style="font-size:13px; opacity:0.8">სკანირება</span>
-    <span class="emp" id="headerEmp"></span>
+    <span class="op-pill" id="hOpId">#—</span>
+    <span class="h-emp" id="hEmp"></span>
+    <div id="wakeDot"></div>
+    <button class="btn-exit" onclick="showExitModal()">გამოსვლა ✕</button>
   </div>
 
   <div class="filter-bar">
-    <span class="ftab active" onclick="setFilter('all', this)">ყველა <span id="cntAll">0</span></span>
-    <span class="ftab" onclick="setFilter('matched', this)">✓ სწორი <span id="cntMatched">0</span></span>
-    <span class="ftab" onclick="setFilter('under', this)">− ნაკლები <span id="cntUnder">0</span></span>
-    <span class="ftab" onclick="setFilter('over', this)">+ მეტობა <span id="cntOver">0</span></span>
-    <span class="ftab" onclick="setFilter('pending', this)">○ ელოდება <span id="cntPending">0</span></span>
-    <span class="ftab" onclick="setFilter('unknown', this)" style="color:var(--purple)">? უცნობი <span id="cntUnknown">0</span></span>
+    <span class="ftab active" onclick="setFilter('all',this)">ყველა <span class="n" id="cA">0</span></span>
+    <span class="ftab" onclick="setFilter('matched',this)">✓ სწორი <span class="n" id="cM">0</span></span>
+    <span class="ftab" onclick="setFilter('under',this)">− ნაკლები <span class="n" id="cU">0</span></span>
+    <span class="ftab" onclick="setFilter('over',this)">+ მეტობა <span class="n" id="cO">0</span></span>
+    <span class="ftab" onclick="setFilter('pending',this)">○ ელოდება <span class="n" id="cP">0</span></span>
+    <span class="ftab" onclick="setFilter('unknown',this)" style="color:var(--purple)">? უცნობი <span class="n" id="cX">0</span></span>
   </div>
 
   <div class="scan-input-wrap">
-    <div class="scan-input-label">ბარკოდი</div>
-    <div class="scan-input-row">
-      <input type="text" id="barcodeInput" placeholder="სკანერი ან ხელით" autocomplete="off" autocorrect="off" spellcheck="false">
+    <div class="sil">ბარკოდი</div>
+    <div class="sir">
+      <input type="text" id="barcodeInput" placeholder="სკანერი ან ხელით" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="off">
       <button class="clear-btn" onclick="clearInput()">✕</button>
     </div>
-    <div class="scan-count-row">
-      <span>სკანირებული: <span class="count" id="scanCount">0</span></span>
-      <span>სულ პოზიცია: <span class="count" id="totalCount">0</span></span>
+    <div class="scan-stats">
+      <span>სკანირებული: <strong id="scanCount">0</strong></span>
+      <span>სულ: <strong id="totalCount">0</strong></span>
     </div>
   </div>
 
   <div class="items-list" id="itemsList"></div>
 
   <div class="bottom-bar">
-    <button class="btn-log" onclick="showLog()">📋 ლოგი</button>
-    <button class="btn-send" onclick="showSummary()" id="sendBtn">გაგზავნა →</button>
+    <button class="btn-sec" onclick="showLog()">📋 ლოგი</button>
+    <button class="btn-send" onclick="showSummary()">გაგზავნა →</button>
   </div>
 </div>
 
-<!-- ITEM DETAIL MODAL -->
-<div class="modal-overlay" id="detailModal" onclick="if(event.target===this)closeDetail()">
-  <div class="detail-modal">
-    <div class="modal-handle"></div>
-    <div class="detail-header">
-      <div class="detail-barcode" id="detailBarcode"></div>
-      <div class="detail-name" id="detailName"></div>
-      <div class="detail-color" id="detailColor"></div>
+<!-- DETAIL MODAL -->
+<div class="mo" id="detailModal" onclick="if(event.target===this)closeDetail()">
+  <div class="det-sheet">
+    <div class="mh"></div>
+    <div class="det-head">
+      <div class="det-bc" id="dBarcode"></div>
+      <div class="det-name" id="dName"></div>
+      <div class="det-color" id="dColor"></div>
     </div>
-    <div class="detail-body">
-      <div class="qty-row">
-        <div class="qty-box">
-          <div class="ql">მოსალოდნელი</div>
-          <div class="qv" id="detailExpected">0</div>
-        </div>
-        <div class="qty-box">
-          <div class="ql">დათვლილი</div>
-          <div class="qv" id="detailScanned">0</div>
-        </div>
-        <div class="qty-box">
-          <div class="ql">სხვაობა</div>
-          <div class="qv" id="detailDiff">0</div>
-        </div>
+    <div class="det-body">
+      <div class="qrow">
+        <div class="qbox"><div class="qlbl">მოსალოდნელი</div><div class="qval" id="dExp">0</div></div>
+        <div class="qbox"><div class="qlbl">დათვლილი</div><div class="qval" id="dScan">0</div></div>
+        <div class="qbox"><div class="qlbl">სხვაობა</div><div class="qval" id="dDiff">0</div></div>
       </div>
-
-      <div class="edit-label">ხელით შეცვლა</div>
-      <div class="qty-editor">
-        <button class="qty-btn" onclick="changeQty(-1)">−</button>
-        <input type="number" class="qty-input" id="qtyInput" inputmode="numeric" min="0">
-        <button class="qty-btn" onclick="changeQty(1)">+</button>
+      <div class="elbl">ხელით შეცვლა</div>
+      <div class="qedit">
+        <button class="qbtn" onclick="changeQty(-1)">−</button>
+        <input type="number" class="qinput" id="qtyInput" inputmode="numeric" min="0">
+        <button class="qbtn" onclick="changeQty(1)">+</button>
       </div>
       <button class="btn-save" onclick="saveQty()">✓ შენახვა</button>
-      <button class="btn-reset" onclick="resetQty()">✕ გადატვირთვა (0-ზე დაყვანა)</button>
+      <button class="btn-reset" onclick="resetQty()">✕ 0-ზე დაყვანა</button>
     </div>
   </div>
 </div>
 
 <!-- LOG MODAL -->
-<div class="modal-overlay" id="logModal" onclick="if(event.target===this)closeLog()">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <div class="modal-header">
-      <h3>სკანების ლოგი</h3>
-      <button class="modal-close" onclick="closeLog()">✕</button>
-    </div>
-    <div class="modal-body" id="logBody"></div>
+<div class="mo" id="logModal" onclick="if(event.target===this)closeLog()">
+  <div class="ms">
+    <div class="mh"></div>
+    <div class="mhead"><h3>სკანების ლოგი</h3><button class="mclose" onclick="closeLog()">✕</button></div>
+    <div class="mbody" id="logBody"></div>
   </div>
 </div>
 
 <!-- SUMMARY MODAL -->
-<div class="modal-overlay" id="summaryModal">
-  <div class="summary-modal">
-    <p class="summary-title">გაგზავნა?</p>
-    <p class="summary-sub" id="summaryOpInfo"></p>
-    <div class="summary-stats">
-      <div class="summary-stat" style="background:var(--green-bg)">
-        <div class="label" style="color:var(--green)">სწორი</div>
-        <div class="value" style="color:var(--green)" id="sumMatched">0</div>
-      </div>
-      <div class="summary-stat" style="background:var(--red-bg)">
-        <div class="label" style="color:var(--red)">ნაკლები</div>
-        <div class="value" style="color:var(--red)" id="sumUnder">0</div>
-      </div>
-      <div class="summary-stat" style="background:var(--orange-bg)">
-        <div class="label" style="color:var(--orange)">მეტობა</div>
-        <div class="value" style="color:var(--orange)" id="sumOver">0</div>
-      </div>
-      <div class="summary-stat" style="background:var(--gray-bg)">
-        <div class="label" style="color:var(--muted)">ელოდება</div>
-        <div class="value" style="color:var(--muted)" id="sumPending">0</div>
-      </div>
-      <div class="summary-stat" style="background:var(--purple-bg); grid-column: span 2">
-        <div class="label" style="color:var(--purple)">უცნობი კოდი (სიაში არ იყო)</div>
-        <div class="value" style="color:var(--purple)" id="sumUnknown">0</div>
+<div class="mo" id="summaryModal" onclick="if(event.target===this)closeSummary()">
+  <div class="sum-sheet">
+    <div class="mh"></div>
+    <div class="sum-inner">
+      <div class="sum-title">შედეგი</div>
+      <div class="sum-sub" id="sumInfo"></div>
+      <div class="sum-grid">
+        <div class="sstat" style="background:var(--green-bg)"><div class="slbl" style="color:var(--green)">✓ სწორი</div><div class="sval" style="color:var(--green)" id="sM">0</div></div>
+        <div class="sstat" style="background:var(--red-bg)"><div class="slbl" style="color:var(--red)">− ნაკლები</div><div class="sval" style="color:var(--red)" id="sU">0</div></div>
+        <div class="sstat" style="background:var(--orange-bg)"><div class="slbl" style="color:var(--orange)">+ მეტობა</div><div class="sval" style="color:var(--orange)" id="sO">0</div></div>
+        <div class="sstat" style="background:#F4F3EF"><div class="slbl" style="color:var(--muted)">○ ელოდება</div><div class="sval" style="color:var(--muted)" id="sP">0</div></div>
+        <div class="sstat wide" style="background:var(--purple-bg)"><div class="slbl" style="color:var(--purple)">⚠ უცნობი კოდი</div><div class="sval" style="color:var(--purple)" id="sX">0</div></div>
       </div>
     </div>
-    <div style="display:flex; gap:10px;">
-      <button class="btn-log" onclick="closeSummary()" style="flex:1">გაუქმება</button>
-      <button class="btn-send" onclick="sendResults()" id="confirmSendBtn" style="flex:2">✓ დადასტურება</button>
+    <div class="sum-btns">
+      <button class="btn-full btn-send-full" onclick="sendResults()" id="confirmSendBtn">✓ გაგზავნა და დასრულება</button>
+      <button class="btn-full btn-cancel" onclick="closeSummary()">გაუქმება</button>
     </div>
   </div>
 </div>
 
-<!-- TOAST -->
+<!-- EXIT MODAL -->
+<div class="mo" id="exitModal" onclick="if(event.target===this)closeExitModal()">
+  <div class="exit-sheet">
+    <div class="mh"></div>
+    <div class="exit-icon">⚠️</div>
+    <div class="exit-title">სად გინდა წახვიდე?</div>
+    <div class="exit-sub">მონაცემები <strong>ლოკალურად შენახულია</strong>.<br>გამოგზავნის გარეშე გასვლა Sheets-ს<br>არ განაახლებს.</div>
+    <div class="exit-btns">
+      <button class="btn-full btn-send-full" onclick="sendAndExit()">✓ გაგზავნა და გამოსვლა</button>
+      <button class="btn-full btn-danger" onclick="exitWithoutSend()">გამოსვლა გაგზავნის გარეშე</button>
+      <button class="btn-full btn-cancel" onclick="closeExitModal()">← დაბრუნება</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqLjS6FyJl3ghAaJytl4ZZ4Rm0-xF8SxSiNa6QcD3Rf4lfFbKW7rMQ2NEtZ4hzxWF_/exec';
 
-// Service Worker რეგისტრაცია
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/Brand_House/sw.js')
-    .catch(err => console.log('SW error:', err));
+  navigator.serviceWorker.register('/Brand_House/sw.js').catch(() => {});
 }
 
-// STATE
-let items = {};        // barcode → { productName, colorSize, expectedQty, scannedQty }
-let unknownItems = {}; // barcode → { scannedQty } — სიაში არ იყო
-let scanLog = [];      // { time, barcode, status }
-let currentFilter = 'all';
-let operationId = null;
-let employeeName = '';
+let items = {}, unknownItems = {}, scanLog = [];
+let currentFilter = 'all', operationId = null, employeeName = '';
+let wakeLock = null, detailBarcode = null;
 
-// ========== WELCOME / LOAD ==========
+const SK  = id => 'bh_sess_' + id;
+const AK  = 'bh_active';
+
+// ── Wake Lock ──────────────────────────────────────────
+async function acquireWake() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      document.getElementById('wakeDot').classList.add('on');
+      wakeLock.addEventListener('release', () => document.getElementById('wakeDot').classList.remove('on'));
+    }
+  } catch(e) {}
+}
+
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && operationId) {
+    await acquireWake();
+    // Recover state if page was killed and reloaded
+    if (Object.keys(items).length === 0) {
+      const raw = localStorage.getItem(SK(operationId));
+      if (raw) {
+        const s = JSON.parse(raw);
+        items = s.items || {}; unknownItems = s.unknownItems || {}; scanLog = s.scanLog || [];
+        renderItems(); updateCounts();
+      }
+    }
+  }
+});
+
+// ── Active session helpers ────────────────────────────
+function setActive(opId, emp) {
+  localStorage.setItem(AK, JSON.stringify({ operationId: opId, employeeName: emp, savedAt: Date.now() }));
+}
+function getActive() {
+  try { return JSON.parse(localStorage.getItem(AK)); } catch(e) { return null; }
+}
+function clearActive() { localStorage.removeItem(AK); }
+
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return s + 'წ წინ';
+  if (s < 3600) return Math.floor(s/60) + 'წთ წინ';
+  if (s < 86400) return Math.floor(s/3600) + 'სთ წინ';
+  return Math.floor(s/86400) + 'დ წინ';
+}
+
+// ── Init ──────────────────────────────────────────────
 window.onload = () => {
-  const saved = localStorage.getItem('bh_employee');
-  if (saved) document.getElementById('empNameInput').value = saved;
+  const emp = localStorage.getItem('bh_emp');
+  if (emp) document.getElementById('empNameInput').value = emp;
+
+  const active = getActive();
+  if (active && localStorage.getItem(SK(active.operationId))) {
+    const bn = document.getElementById('resumeBanner');
+    bn.classList.add('show');
+    document.getElementById('resumeMain').textContent = 'ოპ. #' + active.operationId + ' · ' + active.employeeName;
+    document.getElementById('resumeSub').textContent  = timeAgo(active.savedAt);
+    document.getElementById('opIdInput').value = active.operationId;
+  }
 };
 
+function doResume() {
+  const active = getActive();
+  if (!active) return;
+  const raw = localStorage.getItem(SK(active.operationId));
+  if (!raw) { clearActive(); return; }
+  const s = JSON.parse(raw);
+  items = s.items || {}; unknownItems = s.unknownItems || {}; scanLog = s.scanLog || [];
+  startScan(active.employeeName, active.operationId);
+}
+
+// ── Load Operation ─────────────────────────────────────
 async function loadOperation() {
   const emp  = document.getElementById('empNameInput').value.trim();
   const opId = document.getElementById('opIdInput').value.trim();
   const msg  = document.getElementById('loadMsg');
-
-  if (!emp)  { msg.textContent = '⚠️ გთხოვ სახელი შეიყვანო'; return; }
-  if (!opId) { msg.textContent = '⚠️ ოპერაციის ნომერი შეიყვანო'; return; }
+  if (!emp)  { msg.textContent = '⚠️ სახელი შეიყვანე'; return; }
+  if (!opId) { msg.textContent = '⚠️ ოპ. ნომერი შეიყვანე'; return; }
 
   const btn = document.getElementById('loadBtn');
-  btn.textContent = 'იტვირთება...';
-  btn.disabled = true;
-  msg.textContent = '';
+  btn.textContent = '⏳ იტვირთება...';
+  btn.disabled = true; msg.textContent = '';
 
   try {
-    // Check localStorage for saved session
-    const saved = localStorage.getItem('bh_session_' + opId);
-    if (saved) {
-      const session = JSON.parse(saved);
-      if (confirm('ნახვეული სესია ნაპოვნია ოპერაცია #' + opId + '-ზე. გავაგრძელოთ?')) {
-        items = session.items;
-        unknownItems = session.unknownItems || {};
-        scanLog = session.scanLog || [];
-        startScan(emp, opId);
-        return;
-      }
+    const raw = localStorage.getItem(SK(opId));
+    if (raw) {
+      const s = JSON.parse(raw);
+      items = s.items || {}; unknownItems = s.unknownItems || {}; scanLog = s.scanLog || [];
+      startScan(emp, opId); return;
     }
-
-    const res = await fetch(`${SCRIPT_URL}?action=getOperation&id=${opId}`);
+    const res  = await fetch(`${SCRIPT_URL}?action=getOperation&id=${opId}`);
     const data = await res.json();
-
     if (data.error) { msg.textContent = '❌ ' + data.error; return; }
-
-    // დასრულებული ოპერაციის ჩატვირთვის დაბლოკვა
     if (data.status === 'დასრულებული') {
-      msg.innerHTML = '🔒 ოპერაცია <strong>#' + opId + '</strong> დასრულებულია — აღწერა შეუძლებელია.';
-      msg.style.color = 'var(--red)';
-      return;
+      msg.innerHTML = '🔒 ოპ. <strong>#' + opId + '</strong> დასრულებულია.';
+      msg.style.color = 'var(--red)'; return;
     }
-
-    // Build items map
-    items = {};
-    unknownItems = {};
-    data.items.forEach(item => {
-      items[item.barcode] = {
-        productName: item.productName,
-        colorSize: item.colorSize,
-        expectedQty: item.expectedQty,
-        scannedQty: 0
-      };
+    items = {}; unknownItems = {};
+    data.items.forEach(it => {
+      items[it.barcode] = { productName: it.productName, colorSize: it.colorSize, expectedQty: it.expectedQty, scannedQty: 0 };
     });
     scanLog = [];
     startScan(emp, opId);
-
   } catch(e) {
-    msg.textContent = '❌ კავშირის შეცდომა. ინტერნეტი შეამოწმე.';
+    msg.textContent = '❌ კავშირის შეცდომა';
   } finally {
-    btn.textContent = 'ჩატვირთვა →';
-    btn.disabled = false;
+    btn.textContent = 'ჩატვირთვა →'; btn.disabled = false;
   }
 }
 
 function startScan(emp, opId) {
-  employeeName = emp;
-  operationId  = opId;
-  localStorage.setItem('bh_employee', emp);
-
-  document.getElementById('headerOpId').textContent = '#' + opId;
-  document.getElementById('headerEmp').textContent  = emp;
+  employeeName = emp; operationId = opId;
+  localStorage.setItem('bh_emp', emp);
+  setActive(opId, emp);
+  document.getElementById('hOpId').textContent = '#' + opId;
+  document.getElementById('hEmp').textContent  = emp;
   document.getElementById('totalCount').textContent = Object.keys(items).length;
-
   showScreen('screenScan');
-  renderItems();
-  updateCounts();
-  focusInput();
+  renderItems(); updateCounts(); focusInput(); acquireWake();
 }
 
-// ========== SCAN INPUT ==========
-const barcodeInput = document.getElementById('barcodeInput');
+// ── Barcode Input ──────────────────────────────────────
+const bi = document.getElementById('barcodeInput');
+bi.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); processBarcode(); } });
 
-// Enter = სკანერი ან ხელით აკრეფა
-barcodeInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    processBarcode();
-  }
+let scanTimer = null;
+bi.addEventListener('input', () => {
+  clearTimeout(scanTimer);
+  scanTimer = setTimeout(() => { if (bi.value.length >= 4) processBarcode(); }, 120);
 });
 
-function clearInput() {
-  barcodeInput.value = '';
-  focusInput();
-}
-
+function clearInput() { bi.value = ''; focusInput(); }
 function focusInput() {
-  barcodeInput.focus();
+  if (document.getElementById('screenScan').classList.contains('active'))
+    setTimeout(() => bi.focus(), 50);
 }
-
-// Refocus whenever user taps anywhere on scan screen
 document.getElementById('screenScan').addEventListener('click', e => {
-  if (!e.target.closest('button, .ftab, .modal-overlay')) {
-    focusInput();
-  }
+  if (!e.target.closest('button,.ftab,.mo,input')) focusInput();
 });
 
 function processBarcode() {
-  const code = barcodeInput.value.trim();
-  barcodeInput.value = '';
-  if (!code) return;
-
-  const now = new Date();
-  const timeStr = now.toTimeString().slice(0,8);
-
+  const code = bi.value.trim(); bi.value = '';
+  if (!code || code.length < 2) return;
+  const t = new Date().toTimeString().slice(0,8);
   const item = items[code];
   if (!item) {
-    // უცნობი ბარკოდი — შევინახოთ
-    if (!unknownItems[code]) {
-      unknownItems[code] = { scannedQty: 0 };
-    }
+    if (!unknownItems[code]) unknownItems[code] = { scannedQty: 0 };
     unknownItems[code].scannedQty++;
-    saveSession();
-    vibrate([300]);  // გრძელი ვიბრაცია
-    showUnknown(code);
-    scanLog.unshift({ time: timeStr, barcode: code, status: 'unknown' });
-    updateCounts();
-    renderItems();
-    focusInput();
-    return;
+    saveSession(); vibrate([300]);
+    const f = document.getElementById('unknownFlash');
+    f.textContent = '⚠️ ვერ მოიძებნა: ' + code;
+    f.classList.add('show'); setTimeout(() => f.classList.remove('show'), 1800);
+    scanLog.unshift({ time: t, barcode: code, status: 'unknown' });
+    updateCounts(); renderItems(); focusInput(); return;
   }
-
-  item.scannedQty++;
-  saveSession();
-  vibrate([50]);
-
-  // Log entry
+  item.scannedQty++; saveSession(); vibrate([50]);
   const diff = item.scannedQty - item.expectedQty;
-  const status = diff === 0 ? 'matched' : diff > 0 ? 'over' : 'under';
-  scanLog.unshift({ time: timeStr, barcode: code, status });
-
-  // Update count
-  document.getElementById('scanCount').textContent =
-    Object.values(items).filter(i => i.scannedQty > 0).length;
-
-  updateCounts();
-  renderItems();
-  focusInput();
+  scanLog.unshift({ time: t, barcode: code, status: diff === 0 ? 'matched' : diff > 0 ? 'over' : 'under' });
+  document.getElementById('scanCount').textContent = Object.values(items).filter(i => i.scannedQty > 0).length;
+  updateCounts(); renderItems(); focusInput();
 }
 
-function showUnknown(code) {
-  const el = document.getElementById('unknownFlash');
-  el.textContent = '⚠️ ვერ მოიძებნა: ' + code;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 1800);
+function vibrate(p) { if (navigator.vibrate) navigator.vibrate(p); }
+
+// ── Session ────────────────────────────────────────────
+function saveSession() {
+  try {
+    localStorage.setItem(SK(operationId), JSON.stringify({ items, unknownItems, scanLog }));
+    setActive(operationId, employeeName);
+  } catch(e) {}
 }
 
-function vibrate(pattern) {
-  if (navigator.vibrate) navigator.vibrate(pattern);
-}
-
-// ========== RENDER ==========
-function getStatus(item) {
-  if (item.scannedQty === 0) return 'pending';
-  const diff = item.scannedQty - item.expectedQty;
-  return diff === 0 ? 'matched' : diff > 0 ? 'over' : 'under';
+// ── Render ─────────────────────────────────────────────
+function getStatus(i) {
+  if (i.scannedQty === 0) return 'pending';
+  const d = i.scannedQty - i.expectedQty;
+  return d === 0 ? 'matched' : d > 0 ? 'over' : 'under';
 }
 
 function renderItems() {
   const list = document.getElementById('itemsList');
   let entries = Object.entries(items);
 
-  // Filter
   if (currentFilter === 'unknown') {
-    // უცნობი ბარკოდები
-    const unknownEntries = Object.entries(unknownItems);
-    if (!unknownEntries.length) {
-      list.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>უცნობი კოდები არ არის</p></div>';
-      return;
-    }
-    list.innerHTML = unknownEntries.map(([barcode, item]) => `
-      <div class="item-card unknown">
-        <div class="item-info">
-          <div class="item-barcode">${barcode}</div>
-          <div class="item-name">უცნობი პროდუქცია</div>
-          <div class="item-status purple">⚠ სიაში არ იყო</div>
-        </div>
-        <div class="item-qty">
-          <div class="nums purple">${item.scannedQty}<span class="denom">/—</span></div>
-        </div>
-      </div>`).join('');
+    const ue = Object.entries(unknownItems);
+    list.innerHTML = !ue.length
+      ? '<div class="empty"><div class="ei">🔍</div><p>უცნობი კოდები არ არის</p></div>'
+      : ue.map(([bc, it]) => `<div class="item-card unknown">
+          <div class="ic-info"><div class="ic-bc">${bc}</div><div class="ic-name">უცნობი</div><div class="ic-sub"><span class="badge bg-purple">⚠ სიაში არ იყო</span></div></div>
+          <div class="ic-qty"><div class="qty-n purple">${it.scannedQty}<span class="qty-den">/—</span></div></div>
+        </div>`).join('');
     return;
   }
+  if (currentFilter !== 'all') entries = entries.filter(([,i]) => getStatus(i) === currentFilter);
 
-  if (currentFilter !== 'all') {
-    entries = entries.filter(([, item]) => getStatus(item) === currentFilter);
-  }
-
-  // Sort: most recently scanned first, then pending
-  entries.sort(([a], [b]) => {
-    const ai = scanLog.findIndex(s => s.barcode === a);
-    const bi = scanLog.findIndex(s => s.barcode === b);
-    if (ai === -1 && bi === -1) return 0;
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
-    return ai - bi;
+  entries.sort(([a],[b]) => {
+    const ai = scanLog.findIndex(s => s.barcode === a), bi2 = scanLog.findIndex(s => s.barcode === b);
+    if (ai === -1 && bi2 === -1) return 0; if (ai === -1) return 1; if (bi2 === -1) return -1;
+    return ai - bi2;
   });
 
   if (!entries.length) {
-    list.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>ეს კატეგორია ცარიელია</p></div>';
-    return;
+    list.innerHTML = '<div class="empty"><div class="ei">🔍</div><p>ეს კატეგორია ცარიელია</p></div>'; return;
   }
 
-  let html = entries.map(([barcode, item]) => {
-    const status = getStatus(item);
-    const diff = item.scannedQty - item.expectedQty;
-    const colorClass = status === 'matched' ? 'green' : status === 'over' ? 'orange' : status === 'under' ? 'red' : 'muted';
-    const statusText = status === 'matched' ? '✓ სწორი' : status === 'over' ? `+${diff} მეტობა` : status === 'under' ? `${diff} ნაკლები` : '○ სკანი ელოდება';
-    const safeId = barcode.replace(/[^a-zA-Z0-9]/g,'-');
-
-    return `<div class="item-card ${status}" id="card-${safeId}" onclick="openDetail('${barcode.replace(/'/g,"\\'")}')">
-      <div class="item-info">
-        <div class="item-barcode">${barcode}</div>
-        <div class="item-name">${item.productName} · ${item.colorSize}</div>
-        <div class="item-status ${colorClass}">${statusText}</div>
+  let html = entries.map(([bc, it]) => {
+    const st = getStatus(it), d = it.scannedQty - it.expectedQty;
+    const col = st === 'matched' ? 'green' : st === 'over' ? 'orange' : st === 'under' ? 'red' : 'muted';
+    const bdg = 'bg-' + col;
+    const stxt = st === 'matched' ? '✓ სწორი' : st === 'over' ? `+${d} მეტობა` : st === 'under' ? `${d} ნაკლები` : '○ ელოდება';
+    return `<div class="item-card ${st}" onclick="openDetail('${bc.replace(/'/g,"\\'")}')">
+      <div class="ic-info">
+        <div class="ic-bc">${bc}</div>
+        <div class="ic-name">${it.productName}</div>
+        <div class="ic-sub"><span class="ic-color">${it.colorSize}</span><span class="badge ${bdg}">${stxt}</span></div>
       </div>
-      <div class="item-qty">
-        <div class="nums ${colorClass}">${item.scannedQty}<span class="denom">/${item.expectedQty}</span></div>
-        <div style="font-size:10px;color:var(--muted);text-align:right;margin-top:2px">✏️</div>
+      <div class="ic-qty">
+        <div class="qty-n ${col}">${it.scannedQty}<span class="qty-den">/${it.expectedQty}</span></div>
+        <div class="edit-hint">✏</div>
       </div>
     </div>`;
   }).join('');
 
-  // "ყველა" ფილტრის დროს უცნობები ბოლოში
-  if (currentFilter === 'all' && Object.keys(unknownItems).length > 0) {
-    html += `<div class="section-label" style="color:var(--purple);margin-top:10px">⚠ უცნობი კოდები (სიაში არ იყო)</div>`;
-    html += Object.entries(unknownItems).map(([barcode, item]) => `
-      <div class="item-card unknown">
-        <div class="item-info">
-          <div class="item-barcode">${barcode}</div>
-          <div class="item-name">უცნობი პროდუქცია</div>
-          <div class="item-status purple">⚠ სიაში არ იყო</div>
-        </div>
-        <div class="item-qty">
-          <div class="nums purple">${item.scannedQty}<span class="denom">/—</span></div>
-        </div>
-      </div>`).join('');
+  if (currentFilter === 'all' && Object.keys(unknownItems).length) {
+    html += `<div class="sec-label" style="color:var(--purple)">⚠ უცნობი კოდები</div>`;
+    html += Object.entries(unknownItems).map(([bc,it]) => `<div class="item-card unknown">
+      <div class="ic-info"><div class="ic-bc">${bc}</div><div class="ic-name">უცნობი</div><div class="ic-sub"><span class="badge bg-purple">⚠ სიაში არ იყო</span></div></div>
+      <div class="ic-qty"><div class="qty-n purple">${it.scannedQty}<span class="qty-den">/—</span></div></div>
+    </div>`).join('');
   }
-
   list.innerHTML = html;
 }
 
 function updateCounts() {
-  const vals = Object.values(items);
-  const matched = vals.filter(i => getStatus(i) === 'matched').length;
-  const under   = vals.filter(i => getStatus(i) === 'under').length;
-  const over    = vals.filter(i => getStatus(i) === 'over').length;
-  const pending = vals.filter(i => getStatus(i) === 'pending').length;
-  const all     = vals.length;
-  const unknown = Object.keys(unknownItems).length;
-
-  document.getElementById('cntAll').textContent     = all;
-  document.getElementById('cntMatched').textContent = matched;
-  document.getElementById('cntUnder').textContent   = under;
-  document.getElementById('cntOver').textContent    = over;
-  document.getElementById('cntPending').textContent = pending;
-  document.getElementById('cntUnknown').textContent = unknown;
+  const v = Object.values(items);
+  document.getElementById('cA').textContent = v.length;
+  document.getElementById('cM').textContent = v.filter(i => getStatus(i) === 'matched').length;
+  document.getElementById('cU').textContent = v.filter(i => getStatus(i) === 'under').length;
+  document.getElementById('cO').textContent = v.filter(i => getStatus(i) === 'over').length;
+  document.getElementById('cP').textContent = v.filter(i => getStatus(i) === 'pending').length;
+  document.getElementById('cX').textContent = Object.keys(unknownItems).length;
 }
 
-function setFilter(filter, el) {
-  currentFilter = filter;
+function setFilter(f, el) {
+  currentFilter = f;
   document.querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  renderItems();
-  focusInput();
+  el.classList.add('active'); renderItems(); focusInput();
 }
 
-// ========== SESSION SAVE ==========
-function saveSession() {
-  try {
-    localStorage.setItem('bh_session_' + operationId, JSON.stringify({ items, unknownItems, scanLog }));
-  } catch(e) {}
-}
-
-// ========== ITEM DETAIL MODAL ==========
-let detailBarcode = null;
-
-function openDetail(barcode) {
-  detailBarcode = barcode;
-  const item = items[barcode];
-  if (!item) return;
-
-  const diff = item.scannedQty - item.expectedQty;
-  const diffEl = document.getElementById('detailDiff');
-  diffEl.textContent = diff > 0 ? '+' + diff : diff;
-  diffEl.className = 'qv ' + (diff === 0 ? 'green' : diff > 0 ? 'orange' : 'red');
-
-  document.getElementById('detailBarcode').textContent = barcode;
-  document.getElementById('detailName').textContent = item.productName;
-  document.getElementById('detailColor').textContent = item.colorSize;
-  document.getElementById('detailExpected').textContent = item.expectedQty;
-  document.getElementById('detailScanned').textContent = item.scannedQty;
-  document.getElementById('qtyInput').value = item.scannedQty;
-
+// ── Detail Modal ───────────────────────────────────────
+function openDetail(bc) {
+  detailBarcode = bc; const it = items[bc]; if (!it) return;
+  const d = it.scannedQty - it.expectedQty;
+  const de = document.getElementById('dDiff');
+  de.textContent = d > 0 ? '+' + d : d;
+  de.className = 'qval ' + (d === 0 ? 'green' : d > 0 ? 'orange' : 'red');
+  document.getElementById('dBarcode').textContent = bc;
+  document.getElementById('dName').textContent    = it.productName;
+  document.getElementById('dColor').textContent   = it.colorSize;
+  document.getElementById('dExp').textContent     = it.expectedQty;
+  document.getElementById('dScan').textContent    = it.scannedQty;
+  document.getElementById('qtyInput').value       = it.scannedQty;
   document.getElementById('detailModal').classList.add('show');
 }
-
-function closeDetail() {
-  document.getElementById('detailModal').classList.remove('show');
-  detailBarcode = null;
-  focusInput();
-}
-
-function changeQty(delta) {
-  const input = document.getElementById('qtyInput');
-  const val = Math.max(0, (parseInt(input.value) || 0) + delta);
-  input.value = val;
-  // update diff preview
+function closeDetail() { document.getElementById('detailModal').classList.remove('show'); detailBarcode = null; focusInput(); }
+function changeQty(d) {
+  const inp = document.getElementById('qtyInput'), val = Math.max(0,(parseInt(inp.value)||0)+d); inp.value = val;
   if (detailBarcode && items[detailBarcode]) {
     const diff = val - items[detailBarcode].expectedQty;
-    const diffEl = document.getElementById('detailDiff');
-    diffEl.textContent = diff > 0 ? '+' + diff : diff;
-    diffEl.className = 'qv ' + (diff === 0 ? 'green' : diff > 0 ? 'orange' : 'red');
+    const de = document.getElementById('dDiff');
+    de.textContent = diff > 0 ? '+'+diff : diff;
+    de.className = 'qval ' + (diff === 0 ? 'green' : diff > 0 ? 'orange' : 'red');
   }
 }
-
 function saveQty() {
   if (!detailBarcode) return;
-  const newQty = Math.max(0, parseInt(document.getElementById('qtyInput').value) || 0);
-  items[detailBarcode].scannedQty = newQty;
-  saveSession();
-  updateCounts();
-  renderItems();
-  document.getElementById('scanCount').textContent =
-    Object.values(items).filter(i => i.scannedQty > 0).length;
-  closeDetail();
-  showToast('✓ შენახულია');
+  items[detailBarcode].scannedQty = Math.max(0, parseInt(document.getElementById('qtyInput').value)||0);
+  saveSession(); updateCounts(); renderItems();
+  document.getElementById('scanCount').textContent = Object.values(items).filter(i=>i.scannedQty>0).length;
+  closeDetail(); showToast('✓ შენახულია');
 }
+function resetQty() { document.getElementById('qtyInput').value = 0; changeQty(0); }
 
-function resetQty() {
-  if (!detailBarcode) return;
-  document.getElementById('qtyInput').value = 0;
-  changeQty(0);
-}
-
-// ========== LOG ==========
+// ── Log Modal ──────────────────────────────────────────
 function showLog() {
-  const body = document.getElementById('logBody');
-  if (!scanLog.length) {
-    body.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>ლოგი ცარიელია</p></div>';
-  } else {
-    body.innerHTML = scanLog.map(entry => `
-      <div class="log-item">
-        <span class="log-time">${entry.time}</span>
-        <div class="log-dot ${entry.status === 'matched' ? 'green' : entry.status === 'over' ? 'orange' : entry.status === 'unknown' ? 'purple' : 'red'}"></div>
-        <span class="log-barcode">${entry.barcode}${entry.status === 'unknown' ? ' ⚠' : ''}</span>
-      </div>
-    `).join('');
-  }
+  const b = document.getElementById('logBody');
+  b.innerHTML = !scanLog.length
+    ? '<div class="empty"><div class="ei">📋</div><p>ლოგი ცარიელია</p></div>'
+    : scanLog.map(e => `<div class="log-row">
+        <span class="log-t">${e.time}</span>
+        <div class="dot ${e.status==='matched'?'green':e.status==='over'?'orange':e.status==='unknown'?'purple':'red'}"></div>
+        <span class="log-b">${e.barcode}${e.status==='unknown'?' ⚠':''}</span>
+      </div>`).join('');
   document.getElementById('logModal').classList.add('show');
 }
+function closeLog() { document.getElementById('logModal').classList.remove('show'); focusInput(); }
 
-function closeLog() {
-  document.getElementById('logModal').classList.remove('show');
-  focusInput();
-}
-
-// ========== SUMMARY & SEND ==========
+// ── Summary Modal ──────────────────────────────────────
 function showSummary() {
-  const vals = Object.values(items);
-  const matched = vals.filter(i => getStatus(i) === 'matched').length;
-  const under   = vals.filter(i => getStatus(i) === 'under').length;
-  const over    = vals.filter(i => getStatus(i) === 'over').length;
-  const pending = vals.filter(i => getStatus(i) === 'pending').length;
-  const unknown = Object.keys(unknownItems).length;
-
-  document.getElementById('summaryOpInfo').textContent =
-    `ოპერაცია #${operationId} · ${employeeName} · სულ ${vals.length} პოზიცია`;
-  document.getElementById('sumMatched').textContent = matched;
-  document.getElementById('sumUnder').textContent   = under;
-  document.getElementById('sumOver').textContent    = over;
-  document.getElementById('sumPending').textContent = pending;
-  document.getElementById('sumUnknown').textContent = unknown;
-
+  const v = Object.values(items);
+  document.getElementById('sumInfo').textContent = `ოპ. #${operationId} · ${employeeName} · სულ ${v.length}`;
+  document.getElementById('sM').textContent = v.filter(i=>getStatus(i)==='matched').length;
+  document.getElementById('sU').textContent = v.filter(i=>getStatus(i)==='under').length;
+  document.getElementById('sO').textContent = v.filter(i=>getStatus(i)==='over').length;
+  document.getElementById('sP').textContent = v.filter(i=>getStatus(i)==='pending').length;
+  document.getElementById('sX').textContent = Object.keys(unknownItems).length;
   document.getElementById('summaryModal').classList.add('show');
 }
-
-function closeSummary() {
-  document.getElementById('summaryModal').classList.remove('show');
-  focusInput();
-}
+function closeSummary() { document.getElementById('summaryModal').classList.remove('show'); focusInput(); }
 
 async function sendResults() {
   const btn = document.getElementById('confirmSendBtn');
-  btn.textContent = '⏳ იგზავნება...';
-  btn.disabled = true;
-
-  const results = Object.entries(items).map(([barcode, item]) => ({
-    barcode,
-    productName: item.productName,
-    colorSize: item.colorSize,
-    expectedQty: item.expectedQty,
-    scannedQty: item.scannedQty
+  btn.textContent = '⏳ იგზავნება...'; btn.disabled = true;
+  const results = Object.entries(items).map(([bc,it]) => ({
+    barcode: bc, productName: it.productName, colorSize: it.colorSize, expectedQty: it.expectedQty, scannedQty: it.scannedQty
   }));
-
-  // უცნობი კოდები — ბოლოში დავამატოთ
-  Object.entries(unknownItems).forEach(([barcode, item]) => {
-    results.push({
-      barcode,
-      productName: '⚠ უცნობი პროდუქცია',
-      colorSize: '—',
-      expectedQty: 0,
-      scannedQty: item.scannedQty
-    });
+  Object.entries(unknownItems).forEach(([bc,it]) => {
+    results.push({ barcode: bc, productName: '⚠ უცნობი', colorSize: '—', expectedQty: 0, scannedQty: it.scannedQty });
   });
-
   try {
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'submitScans',
-        operationId,
-        employee: employeeName,
-        results
-      })
-    });
+    const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({ action:'submitScans', operationId, employee: employeeName, results }) });
     const data = await res.json();
-
     if (data.success) {
-      localStorage.removeItem('bh_session_' + operationId);
-      closeSummary();
+      localStorage.removeItem(SK(operationId)); clearActive(); closeSummary();
       showToast('✓ წარმატებით გაიგზავნა!');
-      setTimeout(() => { showScreen('screenWelcome'); }, 2000);
-    } else {
-      showToast('❌ შეცდომა: ' + (data.error || 'სცადე თავიდან'));
-    }
-  } catch(e) {
-    showToast('❌ კავშირის შეცდომა');
-  }
-
-  btn.textContent = '✓ დადასტურება';
-  btn.disabled = false;
+      setTimeout(resetToWelcome, 2000);
+    } else { showToast('❌ ' + (data.error || 'სცადე თავიდან')); }
+  } catch(e) { showToast('❌ კავშირის შეცდომა'); }
+  btn.textContent = '✓ გაგზავნა და დასრულება'; btn.disabled = false;
 }
 
-// ========== UTILS ==========
+// ── Exit Modal ─────────────────────────────────────────
+function showExitModal() { document.getElementById('exitModal').classList.add('show'); }
+function closeExitModal() { document.getElementById('exitModal').classList.remove('show'); focusInput(); }
+async function sendAndExit() { closeExitModal(); await sendResults(); }
+function exitWithoutSend() {
+  closeExitModal(); resetToWelcome(); showToast('მონაცემები შენახულია ლოკალურად');
+}
+
+function resetToWelcome() {
+  if (wakeLock) { wakeLock.release(); wakeLock = null; }
+  operationId = null; employeeName = ''; items = {}; unknownItems = {}; scanLog = [];
+
+  const active = getActive();
+  const bn = document.getElementById('resumeBanner');
+  if (active && localStorage.getItem(SK(active.operationId))) {
+    bn.classList.add('show');
+    document.getElementById('resumeMain').textContent = 'ოპ. #' + active.operationId + ' · ' + active.employeeName;
+    document.getElementById('resumeSub').textContent  = timeAgo(active.savedAt);
+  } else { bn.classList.remove('show'); }
+  showScreen('screenWelcome');
+}
+
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-
 function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000);
 }
 </script>
 </body>

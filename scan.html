@@ -494,7 +494,7 @@
     <span class="ftab active" onclick="setFilter('all', this)">ყველა <span id="cntAll">0</span></span>
     <span class="ftab" onclick="setFilter('matched', this)">✓ სწორი <span id="cntMatched">0</span></span>
     <span class="ftab" onclick="setFilter('under', this)">− ნაკლები <span id="cntUnder">0</span></span>
-    <span class="ftab" onclick="setFilter('over', this)">+ ლიშნური <span id="cntOver">0</span></span>
+    <span class="ftab" onclick="setFilter('over', this)">+ მეტობა <span id="cntOver">0</span></span>
     <span class="ftab" onclick="setFilter('pending', this)">○ ელოდება <span id="cntPending">0</span></span>
   </div>
 
@@ -582,7 +582,7 @@
         <div class="value" style="color:var(--red)" id="sumUnder">0</div>
       </div>
       <div class="summary-stat" style="background:var(--orange-bg)">
-        <div class="label" style="color:var(--orange)">ლიშნური</div>
+        <div class="label" style="color:var(--orange)">მეტობა</div>
         <div class="value" style="color:var(--orange)" id="sumOver">0</div>
       </div>
       <div class="summary-stat" style="background:var(--gray-bg)">
@@ -646,6 +646,13 @@ async function loadOperation() {
     const data = await res.json();
 
     if (data.error) { msg.textContent = '❌ ' + data.error; return; }
+
+    // დასრულებული ოპერაციის ჩატვირთვის დაბლოკვა
+    if (data.status === 'დასრულებული') {
+      msg.innerHTML = '🔒 ოპერაცია <strong>#' + opId + '</strong> დასრულებულია — აღწერა შეუძლებელია.';
+      msg.style.color = 'var(--red)';
+      return;
+    }
 
     // Build items map
     items = {};
@@ -788,7 +795,7 @@ function renderItems() {
     const status = getStatus(item);
     const diff = item.scannedQty - item.expectedQty;
     const colorClass = status === 'matched' ? 'green' : status === 'over' ? 'orange' : status === 'under' ? 'red' : 'muted';
-    const statusText = status === 'matched' ? '✓ სწორი' : status === 'over' ? `+${diff} ლიშნური` : status === 'under' ? `${diff} ნაკლები` : '○ სკანი ელოდება';
+    const statusText = status === 'matched' ? '✓ სწორი' : status === 'over' ? `+${diff} მეტობა` : status === 'under' ? `${diff} ნაკლები` : '○ სკანი ელოდება';
     const safeId = barcode.replace(/[^a-zA-Z0-9]/g,'-');
 
     return `<div class="item-card ${status}" id="card-${safeId}" onclick="openDetail('${barcode.replace(/'/g,"\\'")}')">

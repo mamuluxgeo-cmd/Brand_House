@@ -208,14 +208,7 @@
     flex-shrink: 0;
   }
 
-  /* DELETE BUTTON SHAKE */
-  @keyframes shake {
-    0%,100% { transform: translateX(0); }
-    20% { transform: translateX(-4px); }
-    40% { transform: translateX(4px); }
-    60% { transform: translateX(-3px); }
-    80% { transform: translateX(3px); }
-  }
+  /* DELETE BUTTON */
   .btn-delete { color: var(--red); border-color: var(--red-light) !important; }
   .btn-delete:hover { background: var(--red-light) !important; }
 
@@ -260,29 +253,6 @@
   .empty-icon { font-size: 40px; margin-bottom: 12px; }
   .empty h3 { font-size: 15px; font-weight: 500; margin-bottom: 6px; color: var(--text); }
 
-  /* MODAL */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal-overlay.show { display: flex; }
-  .modal {
-    background: var(--surface);
-    border-radius: 14px;
-    padding: 28px;
-    width: 480px;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-  }
-  .modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
-  .modal .sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
-
   .toast {
     position: fixed;
     bottom: 24px;
@@ -301,94 +271,9 @@
 
   .mono { font-family: var(--mono); }
   .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
-  /* LOGIN SCREEN */
-  .login-screen {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: var(--accent);
-    z-index: 9999;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-  }
-  .login-screen.show { display: flex; }
-  .login-box {
-    background: var(--surface);
-    border-radius: 16px;
-    padding: 36px 32px;
-    width: 100%;
-    max-width: 360px;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.25);
-  }
-  .login-logo {
-    width: 56px; height: 56px;
-    border-radius: 12px;
-    background: var(--accent);
-    padding: 8px;
-    margin: 0 auto 16px;
-    display: block;
-  }
-  .login-title { font-size: 18px; font-weight: 600; text-align: center; margin-bottom: 4px; }
-  .login-sub { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 28px; }
-  .login-group { margin-bottom: 14px; }
-  .login-group label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
-  .login-group input {
-    width: 100%; padding: 12px 14px;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    font-size: 14px;
-    font-family: var(--font);
-    outline: none;
-    transition: border-color 0.2s;
-    background: var(--surface);
-    color: var(--text);
-  }
-  .login-group input:focus { border-color: var(--accent); }
-  .login-group input.error { border-color: var(--red); }
-  .login-err { font-size: 12px; color: var(--red); margin-top: 10px; text-align: center; min-height: 18px; }
-  .login-btn {
-    width: 100%; padding: 13px;
-    background: var(--accent); color: #fff;
-    border: none; border-radius: 10px;
-    font-size: 14px; font-family: var(--font); font-weight: 600;
-    cursor: pointer; margin-top: 6px;
-    transition: background 0.2s, transform 0.1s;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-  }
-  .login-btn:hover { background: var(--green); }
-  .login-btn:active { transform: scale(0.98); }
-  @keyframes loginShake {
-    0%,100% { transform: translateX(0); }
-    20% { transform: translateX(-6px); }
-    40% { transform: translateX(6px); }
-    60% { transform: translateX(-4px); }
-    80% { transform: translateX(4px); }
-  }
-  .login-box.shake { animation: loginShake 0.4s ease; }
 </style>
 </head>
 <body>
-
-<!-- LOGIN SCREEN -->
-<div class="login-screen show" id="loginScreen">
-  <div class="login-box" id="loginBox">
-    <img src="logo.png" class="login-logo" alt="BH" onerror="this.style.background='#1B4332'">
-    <div class="login-title">Brand House</div>
-    <div class="login-sub">აღწერების პლატფორმა · ადმინი</div>
-    <div class="login-group">
-      <label>სახელი</label>
-      <input type="text" id="loginUser" placeholder="Admin" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <div class="login-group">
-      <label>პაროლი</label>
-      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <div class="login-err" id="loginErr"></div>
-    <button class="login-btn" id="loginBtn" onclick="doLogin()">შესვლა →</button>
-  </div>
-</div>
 
 <header>
   <img src="logo.png" alt="Brand House" onerror="this.style.display='none'">
@@ -516,48 +401,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ⚠️ შეცვალე შენი Apps Script URL
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqLjS6FyJl3ghAaJytl4ZZ4Rm0-xF8SxSiNa6QcD3Rf4lfFbKW7rMQ2NEtZ4hzxWF_/exec';
-
-// ========== LOGIN ==========
-const AUTH_KEY = 'bh_auth';
-const USERS = { 'brandhouse': '12344321' };
-
-function checkAuth() {
-  if (sessionStorage.getItem(AUTH_KEY) === 'ok') {
-    document.getElementById('loginScreen').classList.remove('show');
-  }
-}
-
-function doLogin() {
-  const user = document.getElementById('loginUser').value.trim();
-  const pass = document.getElementById('loginPass').value;
-  const err  = document.getElementById('loginErr');
-  const btn  = document.getElementById('loginBtn');
-  const box  = document.getElementById('loginBox');
-
-  err.textContent = '';
-  if (!user || !pass) { err.textContent = 'შეიყვანე სახელი და პაროლი'; return; }
-
-  setBtnLoading(btn, true);
-  setTimeout(() => {
-    if (USERS[user] && USERS[user] === pass) {
-      sessionStorage.setItem(AUTH_KEY, 'ok');
-      document.getElementById('loginScreen').style.transition = 'opacity 0.4s';
-      document.getElementById('loginScreen').style.opacity = '0';
-      setTimeout(() => document.getElementById('loginScreen').classList.remove('show'), 400);
-    } else {
-      box.classList.remove('shake');
-      void box.offsetWidth;
-      box.classList.add('shake');
-      document.getElementById('loginPass').classList.add('error');
-      err.textContent = '❌ სახელი ან პაროლი არასწორია';
-      setBtnLoading(btn, false);
-    }
-  }, 600);
-}
-
-checkAuth();
 
 let currentOpId = null;
 let parsedItems = [];
@@ -568,7 +412,7 @@ let autoRefreshTimer = null;
 
 // ========== CACHE ==========
 const CACHE_OPS_KEY = 'bh_admin_ops';
-const CACHE_TTL = 5 * 60 * 1000; // 5 წუთი
+const CACHE_TTL = 5 * 60 * 1000;
 
 function cacheSet(key, data) {
   try { localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch(e) {}
@@ -612,8 +456,6 @@ function showToast(msg, duration = 3000) {
 }
 
 // ========== OPERATIONS LIST ==========
-
-// პირველი გახსნა: cache → ეკრანი, შემდეგ ფონში სერვერი
 async function loadOperationsCached() {
   const cached = cacheGet(CACHE_OPS_KEY);
   if (cached) {
@@ -622,7 +464,6 @@ async function loadOperationsCached() {
   loadOperationsBg();
 }
 
-// ფონური განახლება — UI ჩუმად იცვლება
 async function loadOperationsBg() {
   showSync();
   try {
@@ -635,7 +476,6 @@ async function loadOperationsBg() {
   hideSync();
 }
 
-// ხელით განახლება (ღილაკიდან)
 async function loadOperations() {
   return loadOperationsBg();
 }
@@ -664,7 +504,6 @@ async function selectOperation(id) {
   document.getElementById('resultsSection').style.display = 'block';
   document.getElementById('resOpId').textContent = id;
 
-  // cache-იდან დაუყოვნებლივ აჩვენე თუ არის
   const cachedRes = cacheGet('bh_results_' + id);
   if (cachedRes) {
     renderCachedResults(cachedRes.data);
@@ -679,7 +518,6 @@ async function selectOperation(id) {
   await loadResults(id);
 }
 
-// ფონური results განახლება
 async function loadResultsBg(id) {
   if (id !== currentOpId) return;
   showSync();
@@ -830,7 +668,6 @@ function handleFile(file) {
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-    // parse: კოდი, არტიკული, საქონელი, ფერი/ზომა, რაოდ., ფასი
     parsedItems = [];
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
@@ -956,7 +793,7 @@ function setBtnLoading(btn, loading) {
   }
 }
 
-// ========== REFRESH WITH LOADING ==========
+// ========== REFRESH ==========
 async function refreshResults() {
   const btn = document.getElementById('refreshBtn');
   setBtnLoading(btn, true);

@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brand House · ადმინ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #F7F6F2;
+    --surface: #FFFFFF;
+    --border: #E4E2DC;
+    --text: #1A1A18;
+    --muted: #7A7870;
+    --accent: #1B4332;
+    --accent-light: #D8F3DC;
+    --green: #2D6A4F;
+    --red: #C1121F;
+    --red-light: #FFE8E9;
+    --orange: #CA6702;
+    --orange-light: #FFF3CD;
+    --blue: #1B4F8A;
+    --blue-light: #E8F0FE;
+    --radius: 10px;
+    --mono: 'DM Mono', monospace;
+    --font: 'Noto Sans Georgian', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh; }
+
+  /* HEADER */
+  header {
+    background: var(--accent);
+    padding: 0 28px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header img { height: 36px; width: 36px; object-fit: contain; border-radius: 6px; background: #fff; padding: 3px; }
+  header .brand { color: #fff; font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
+  header .sub { color: rgba(255,255,255,0.55); font-size: 12px; margin-left: auto; }
+
+  /* LAYOUT */
+  .layout { display: flex; height: calc(100vh - 60px); }
+  .sidebar {
+    width: 300px;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .main { flex: 1; overflow-y: auto; padding: 28px; }
+
+  /* SIDEBAR */
+  .sidebar-header {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sidebar-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .ops-list { overflow-y: auto; flex: 1; }
+  .op-item {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .op-item:hover { background: var(--bg); }
+  .op-item.active { background: var(--blue-light); border-left: 3px solid var(--blue); }
+  .op-id { font-family: var(--mono); font-size: 16px; font-weight: 500; color: var(--accent); }
+  .op-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .op-file { font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 5px;
+  }
+  .badge-active { background: var(--blue-light); color: var(--blue); }
+  .badge-done { background: var(--accent-light); color: var(--green); }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: var(--accent-light); }
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload-icon { font-size: 36px; margin-bottom: 12px; }
+  .upload-zone h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .upload-zone p { font-size: 12px; color: var(--muted); }
+
+  /* CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 16px;
+  }
+
+  /* STATS ROW */
+  .stats { display: flex; gap: 14px; margin-bottom: 20px; }
+  .stat {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+  }
+  .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .stat-value { font-size: 26px; font-weight: 600; font-family: var(--mono); }
+  .stat-value.green { color: var(--green); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.orange { color: var(--orange); }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+  }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+  .row-matched td:first-child { border-left: 3px solid var(--green); }
+  .row-over td:first-child { border-left: 3px solid var(--orange); }
+  .row-under td:first-child { border-left: 3px solid var(--red); }
+
+  .pill {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 20px;
+  }
+  .pill-green { background: var(--accent-light); color: var(--green); }
+  .pill-red { background: var(--red-light); color: var(--red); }
+  .pill-orange { background: var(--orange-light); color: var(--orange); }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: var(--font);
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--green); }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-outline:hover { background: var(--bg); }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* FILTER TABS */
+  .filter-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .ftab {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    transition: all 0.15s;
+  }
+  .ftab.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+  /* PREVIEW TABLE */
+  .preview-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: var(--blue-light);
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  /* EMPTY STATE */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty h3 { font-size: 15px; font-weight: 500; margin-bottom: 6px; color: var(--text); }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 28px;
+    width: 480px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  }
+  .modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  .modal .sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--text);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .mono { font-family: var(--mono); }
+  .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="logo.png" alt="Brand House" onerror="this.style.display='none'">
+  <span class="brand">Brand House</span>
+  <span class="sub">საწყობის სისტემა · ადმინ</span>
+</header>
+
+<div class="layout">
+  <!-- SIDEBAR: Operations List -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">ოპერაციები</span>
+      <button class="btn btn-outline btn-sm" onclick="loadOperations()">↻ განახლება</button>
+    </div>
+    <div class="ops-list" id="opsList">
+      <div class="loading">იტვირთება...</div>
+    </div>
+  </div>
+
+  <!-- MAIN AREA -->
+  <div class="main" id="mainArea">
+    <!-- Upload section (default) -->
+    <div id="uploadSection">
+      <div style="max-width:600px; margin: 0 auto; padding-top: 20px;">
+        <h2 style="font-size:20px; font-weight:600; margin-bottom:6px;">Excel-ის ატვირთვა</h2>
+        <p style="color:var(--muted); font-size:13px; margin-bottom:24px;">ახალი ოპერაციის შესაქმნელად ატვირთე IP ფაილი</p>
+
+        <div class="upload-zone" id="dropZone">
+          <input type="file" accept=".xlsx,.xls" id="fileInput" onchange="handleFile(this.files[0])">
+          <div class="upload-icon">📂</div>
+          <h3>Excel ფაილის ატვირთვა</h3>
+          <p>მოათავსე ფაილი ან დააჭირე არჩევას</p>
+          <p style="margin-top:6px; font-size:11px;">xlsx, xls</p>
+        </div>
+
+        <div id="previewSection" style="display:none; margin-top:20px;">
+          <div class="card">
+            <div class="card-title">ფაილის გადახედვა</div>
+            <div class="preview-info" id="previewInfo"></div>
+            <div class="table-wrap" id="previewTable"></div>
+            <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end;">
+              <button class="btn btn-outline" onclick="cancelUpload()">გაუქმება</button>
+              <button class="btn btn-primary" onclick="createOperation()" id="createBtn">
+                ✓ ოპერაციის შექმნა
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results section (when operation selected) -->
+    <div id="resultsSection" style="display:none;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:22px;">
+        <button class="btn btn-outline btn-sm" onclick="backToUpload()">← უკან</button>
+        <h2 style="font-size:18px; font-weight:600;">ოპერაცია #<span id="resOpId"></span></h2>
+        <span id="resStatus" class="badge"></span>
+        <div style="margin-left:auto; display:flex; gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="downloadResults()">↓ Excel გადმოწერა</button>
+          <button class="btn btn-outline btn-sm" onclick="loadResults(currentOpId)">↻ განახლება</button>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">სულ პოზიცია</div>
+          <div class="stat-value mono" id="statTotal">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">სწორი</div>
+          <div class="stat-value green" id="statMatched">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">ნაკლები</div>
+          <div class="stat-value red" id="statUnder">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">ლიშნური</div>
+          <div class="stat-value orange" id="statOver">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">სკანი არ ყოფილა</div>
+          <div class="stat-value mono" id="statPending">—</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+          <div class="card-title" style="margin-bottom:0;">შედეგები</div>
+          <div class="filter-tabs">
+            <span class="ftab active" onclick="filterResults('all', this)">ყველა</span>
+            <span class="ftab" onclick="filterResults('სწორი', this)">✓ სწორი</span>
+            <span class="ftab" onclick="filterResults('ნაკლები', this)">− ნაკლები</span>
+            <span class="ftab" onclick="filterResults('ლიშნური', this)">+ ლიშნური</span>
+            <span class="ftab" onclick="filterResults('pending', this)">○ ელოდება</span>
+          </div>
+        </div>
+
+        <div id="resultsEmpty" class="empty" style="display:none;">
+          <div class="empty-icon">⏳</div>
+          <h3>შედეგები ჯერ არ არის</h3>
+          <p>სკანირება ჯერ არ მომხდარა ამ ოპერაციაზე</p>
+        </div>
+
+        <div class="table-wrap" id="resultsTable"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ⚠️ შეცვალე შენი Apps Script URL
+const SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
+
+let currentOpId = null;
+let parsedItems = [];
+let currentFileName = '';
+let allResults = [];
+let allExpected = [];
+
+// ========== INIT ==========
+loadOperations();
+
+// ========== TOAST ==========
+function showToast(msg, duration = 3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ========== OPERATIONS LIST ==========
+async function loadOperations() {
+  try {
+    const res = await fetch(SCRIPT_URL + '?action=getOperationsList');
+    const data = await res.json();
+    renderOpsList(data.operations || []);
+  } catch(e) {
+    document.getElementById('opsList').innerHTML = '<div class="loading">კავშირის შეცდომა</div>';
+  }
+}
+
+function renderOpsList(ops) {
+  const el = document.getElementById('opsList');
+  if (!ops.length) {
+    el.innerHTML = '<div class="loading">ოპერაციები არ არის</div>';
+    return;
+  }
+  el.innerHTML = ops.map(op => `
+    <div class="op-item ${currentOpId == op.id ? 'active' : ''}" onclick="selectOperation(${op.id})">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span class="op-id">#${op.id}</span>
+        <span class="badge ${op.status === 'დასრულებული' ? 'badge-done' : 'badge-active'}">${op.status}</span>
+      </div>
+      <div class="op-file">${op.fileName || '—'}</div>
+      <div class="op-meta">${op.date} · ${op.totalItems} პოზიცია${op.employee ? ' · ' + op.employee : ''}</div>
+    </div>
+  `).join('');
+}
+
+async function selectOperation(id) {
+  currentOpId = id;
+  document.getElementById('uploadSection').style.display = 'none';
+  document.getElementById('resultsSection').style.display = 'block';
+  document.getElementById('resOpId').textContent = id;
+
+  // stats reset
+  ['statTotal','statMatched','statUnder','statOver','statPending'].forEach(id => {
+    document.getElementById(id).textContent = '—';
+  });
+  document.getElementById('resultsTable').innerHTML = '<div class="loading">იტვირთება...</div>';
+
+  // reload ops list to mark active
+  loadOperations();
+  await loadResults(id);
+}
+
+// ========== RESULTS ==========
+async function loadResults(id) {
+  try {
+    // load expected items
+    const opRes = await fetch(`${SCRIPT_URL}?action=getOperation&id=${id}`);
+    const opData = await opRes.json();
+    allExpected = opData.items || [];
+
+    // load scanned results
+    const res = await fetch(`${SCRIPT_URL}?action=getResults&id=${id}`);
+    const data = await res.json();
+    allResults = data.results || [];
+
+    const status = opData.status || 'მიმდინარე';
+    const statusEl = document.getElementById('resStatus');
+    statusEl.textContent = status;
+    statusEl.className = 'badge ' + (status === 'დასრულებული' ? 'badge-done' : 'badge-active');
+
+    if (!allResults.length && !allExpected.length) {
+      document.getElementById('resultsEmpty').style.display = 'block';
+      document.getElementById('resultsTable').innerHTML = '';
+      return;
+    }
+
+    // merge: expected + scanned
+    const merged = allExpected.map(exp => {
+      const found = allResults.find(r => r.barcode === exp.barcode);
+      return found || {
+        barcode: exp.barcode, productName: exp.productName,
+        colorSize: exp.colorSize, expectedQty: exp.expectedQty,
+        scannedQty: 0, difference: -exp.expectedQty, status: 'pending'
+      };
+    });
+
+    // stats
+    const matched = merged.filter(r => r.status === 'სწორი').length;
+    const under   = merged.filter(r => r.status === 'ნაკლები' || r.status === 'pending').length;
+    const over    = merged.filter(r => r.status === 'ლიშნური').length;
+    const pending = merged.filter(r => r.status === 'pending').length;
+
+    document.getElementById('statTotal').textContent   = merged.length;
+    document.getElementById('statMatched').textContent = matched;
+    document.getElementById('statUnder').textContent   = under;
+    document.getElementById('statOver').textContent    = over;
+    document.getElementById('statPending').textContent = pending;
+
+    allResults = merged;
+    renderResultsTable(merged);
+  } catch(e) {
+    document.getElementById('resultsTable').innerHTML = '<div class="loading">შეცდომა მონაცემების ჩატვირთვისას</div>';
+  }
+}
+
+function renderResultsTable(results) {
+  if (!results.length) {
+    document.getElementById('resultsEmpty').style.display = 'block';
+    document.getElementById('resultsTable').innerHTML = '';
+    return;
+  }
+  document.getElementById('resultsEmpty').style.display = 'none';
+  document.getElementById('resultsTable').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>ბარკოდი</th>
+          <th>საქონელი</th>
+          <th>ფერი/ზომა</th>
+          <th style="text-align:center">მოსალოდნელი</th>
+          <th style="text-align:center">დათვლილი</th>
+          <th style="text-align:center">სხვაობა</th>
+          <th>სტატუსი</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${results.map(r => {
+          const cls = r.status === 'სწორი' ? 'row-matched' : r.status === 'ლიშნური' ? 'row-over' : 'row-under';
+          const pill = r.status === 'სწორი' ? 'pill-green' : r.status === 'ლიშნური' ? 'pill-orange' : 'pill-red';
+          const label = r.status === 'pending' ? 'ელოდება' : r.status;
+          const diff = r.difference !== undefined ? (r.difference > 0 ? '+' + r.difference : r.difference) : '—';
+          return `<tr class="${cls}">
+            <td class="mono" style="font-size:12px">${r.barcode}</td>
+            <td>${r.productName || '—'}</td>
+            <td>${r.colorSize || '—'}</td>
+            <td style="text-align:center">${r.expectedQty}</td>
+            <td style="text-align:center">${r.scannedQty ?? '—'}</td>
+            <td style="text-align:center; font-weight:600">${diff}</td>
+            <td><span class="pill ${pill}">${label}</span></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function filterResults(filter, el) {
+  document.querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  if (filter === 'all') { renderResultsTable(allResults); return; }
+  if (filter === 'pending') { renderResultsTable(allResults.filter(r => r.status === 'pending')); return; }
+  renderResultsTable(allResults.filter(r => r.status === filter));
+}
+
+// ========== EXCEL UPLOAD ==========
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0]); });
+
+function handleFile(file) {
+  if (!file) return;
+  currentFileName = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, { type: 'binary' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+    // parse: კოდი, არტიკული, საქონელი, ფერი/ზომა, რაოდ., ფასი
+    parsedItems = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r[1] || !r[3]) continue;
+      const barcode = String(r[1]).trim() + '-' + String(r[3]).trim();
+      const qty = parseFloat(String(r[4]).replace(/[^\d.]/g, '')) || 0;
+      parsedItems.push({
+        barcode, productName: r[2] || '', colorSize: r[3] || '',
+        expectedQty: qty, price: r[5] || 0
+      });
+    }
+
+    showPreview();
+  };
+  reader.readAsBinaryString(file);
+}
+
+function showPreview() {
+  document.getElementById('previewSection').style.display = 'block';
+  document.getElementById('previewInfo').innerHTML =
+    `<strong>📄 ${currentFileName}</strong> &nbsp;·&nbsp; ${parsedItems.length} პოზიცია`;
+
+  const sample = parsedItems.slice(0, 8);
+  document.getElementById('previewTable').innerHTML = `
+    <table>
+      <thead><tr><th>ბარკოდი</th><th>საქონელი</th><th>ფერი/ზომა</th><th style="text-align:center">რაოდ.</th></tr></thead>
+      <tbody>
+        ${sample.map(r => `<tr>
+          <td class="mono" style="font-size:12px">${r.barcode}</td>
+          <td>${r.productName}</td>
+          <td>${r.colorSize}</td>
+          <td style="text-align:center">${r.expectedQty}</td>
+        </tr>`).join('')}
+        ${parsedItems.length > 8 ? `<tr><td colspan="4" style="color:var(--muted); text-align:center">... კიდევ ${parsedItems.length - 8} პოზიცია</td></tr>` : ''}
+      </tbody>
+    </table>
+  `;
+}
+
+function cancelUpload() {
+  document.getElementById('previewSection').style.display = 'none';
+  document.getElementById('fileInput').value = '';
+  parsedItems = [];
+}
+
+async function createOperation() {
+  if (!parsedItems.length) return;
+  const btn = document.getElementById('createBtn');
+  btn.textContent = '⏳ იქმნება...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'createOperation', fileName: currentFileName, items: parsedItems })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`✓ ოპერაცია #${data.operationId} შეიქმნა!`);
+      cancelUpload();
+      await loadOperations();
+      selectOperation(data.operationId);
+    } else {
+      showToast('შეცდომა: ' + (data.error || 'უცნობი'));
+    }
+  } catch(e) {
+    showToast('კავშირის შეცდომა');
+  }
+  btn.textContent = '✓ ოპერაციის შექმნა';
+  btn.disabled = false;
+}
+
+// ========== DOWNLOAD ==========
+function downloadResults() {
+  if (!allResults.length) { showToast('შედეგები არ არის'); return; }
+  const rows = [['ბარკოდი','საქონელი','ფერი/ზომა','მოსალოდნელი','დათვლილი','სხვაობა','სტატუსი']];
+  allResults.forEach(r => {
+    rows.push([r.barcode, r.productName, r.colorSize, r.expectedQty,
+      r.scannedQty ?? 0, r.difference ?? 0, r.status === 'pending' ? 'ელოდება' : r.status]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'შედეგები');
+  XLSX.writeFile(wb, `operation_${currentOpId}_results.xlsx`);
+}
+
+function backToUpload() {
+  currentOpId = null;
+  document.getElementById('uploadSection').style.display = 'block';
+  document.getElementById('resultsSection').style.display = 'none';
+}
+</script>
+</body>
+</html>

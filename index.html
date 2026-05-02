@@ -277,6 +277,7 @@
   <img src="logo.png" alt="Brand House" onerror="this.style.display='none'">
   <span class="brand">Brand House</span>
   <span class="sub">საწყობის სისტემა · ადმინ</span>
+  <span id="syncDot" style="width:7px;height:7px;border-radius:50%;background:#4ade80;margin-left:10px;opacity:0;transition:opacity 0.3s;flex-shrink:0;" title="სინქრონიზაცია..."></span>
 </header>
 
 <div class="layout">
@@ -402,9 +403,44 @@ let parsedItems = [];
 let currentFileName = '';
 let allResults = [];
 let allExpected = [];
+let autoRefreshTimer = null;
+
+// ========== CACHE ==========
+const CACHE_OPS_KEY = 'bh_admin_ops';
+const CACHE_TTL = 5 * 60 * 1000; // 5 წუთი
+
+function cacheSet(key, data) {
+  try { localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch(e) {}
+}
+function cacheGet(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    return { data, stale: Date.now() - ts > CACHE_TTL };
+  } catch(e) { return null; }
+}
+
+// ========== SYNC INDICATOR ==========
+function showSync() {
+  document.getElementById('syncDot').style.opacity = '1';
+}
+function hideSync() {
+  setTimeout(() => document.getElementById('syncDot').style.opacity = '0', 800);
+}
 
 // ========== INIT ==========
-loadOperations();
+loadOperationsCached();
+startAutoRefresh();
+
+// ========== AUTO REFRESH ==========
+function startAutoRefresh() {
+  clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(() => {
+    loadOperationsBg();
+    if (currentOpId) loadResultsBg(currentOpId);
+  }, 30000);
+}
 
 // ========== TOAST ==========
 function showToast(msg, duration = 3000) {
@@ -415,14 +451,32 @@ function showToast(msg, duration = 3000) {
 }
 
 // ========== OPERATIONS LIST ==========
-async function loadOperations() {
+
+// პირველი გახსნა: cache → ეკრანი, შემდეგ ფონში სერვერი
+async function loadOperationsCached() {
+  const cached = cacheGet(CACHE_OPS_KEY);
+  if (cached) {
+    renderOpsList(cached.data);
+  }
+  loadOperationsBg();
+}
+
+// ფონური განახლება — UI ჩუმად იცვლება
+async function loadOperationsBg() {
+  showSync();
   try {
     const res = await fetch(SCRIPT_URL + '?action=getOperationsList');
     const data = await res.json();
-    renderOpsList(data.operations || []);
-  } catch(e) {
-    document.getElementById('opsList').innerHTML = '<div class="loading">კავშირის შეცდომა</div>';
-  }
+    const ops = data.operations || [];
+    cacheSet(CACHE_OPS_KEY, ops);
+    renderOpsList(ops);
+  } catch(e) {}
+  hideSync();
+}
+
+// ხელით განახლება (ღილაკიდან)
+async function loadOperations() {
+  return loadOperationsBg();
 }
 
 function renderOpsList(ops) {
@@ -449,71 +503,106 @@ async function selectOperation(id) {
   document.getElementById('resultsSection').style.display = 'block';
   document.getElementById('resOpId').textContent = id;
 
-  // stats reset
-  ['statTotal','statMatched','statUnder','statOver','statPending'].forEach(id => {
-    document.getElementById(id).textContent = '—';
-  });
-  document.getElementById('resultsTable').innerHTML = '<div class="loading">იტვირთება...</div>';
+  // cache-იდან დაუყოვნებლივ აჩვენე თუ არის
+  const cachedRes = cacheGet('bh_results_' + id);
+  if (cachedRes) {
+    renderCachedResults(cachedRes.data);
+  } else {
+    ['statTotal','statMatched','statUnder','statOver','statPending'].forEach(sid => {
+      document.getElementById(sid).textContent = '—';
+    });
+    document.getElementById('resultsTable').innerHTML = '<div class="loading">იტვირთება...</div>';
+  }
 
-  // reload ops list to mark active
-  loadOperations();
+  loadOperationsBg();
   await loadResults(id);
+}
+
+// ფონური results განახლება
+async function loadResultsBg(id) {
+  if (id !== currentOpId) return;
+  showSync();
+  try {
+    const [opRes, resRes] = await Promise.all([
+      fetch(`${SCRIPT_URL}?action=getOperation&id=${id}`),
+      fetch(`${SCRIPT_URL}?action=getResults&id=${id}`)
+    ]);
+    const opData  = await opRes.json();
+    const resData = await resRes.json();
+    processResults(id, opData, resData);
+  } catch(e) {}
+  hideSync();
 }
 
 // ========== RESULTS ==========
 async function loadResults(id) {
+  showSync();
   try {
-    // load expected items
-    const opRes = await fetch(`${SCRIPT_URL}?action=getOperation&id=${id}`);
-    const opData = await opRes.json();
-    allExpected = opData.items || [];
-
-    // load scanned results
-    const res = await fetch(`${SCRIPT_URL}?action=getResults&id=${id}`);
-    const data = await res.json();
-    allResults = data.results || [];
-
-    const status = opData.status || 'მიმდინარე';
-    currentStatus = status;
-    updateStatusUI(status);
-
-    if (!allResults.length && !allExpected.length) {
-      document.getElementById('resultsEmpty').style.display = 'block';
-      document.getElementById('resultsTable').innerHTML = '';
-      return;
-    }
-
-    // normalize old data from sheets
-    const merged = allExpected.map(exp => {
-      const found = allResults.find(r => r.barcode === exp.barcode);
-      if (found) {
-        if (found.status === 'ლიშნური') found.status = 'მეტობა';
-        return found;
-      }
-      return {
-        barcode: exp.barcode, productName: exp.productName,
-        colorSize: exp.colorSize, expectedQty: exp.expectedQty,
-        scannedQty: 0, difference: -exp.expectedQty, status: 'pending'
-      };
-    });
-
-    // stats
-    const matched = merged.filter(r => r.status === 'სწორი').length;
-    const under   = merged.filter(r => r.status === 'ნაკლები' || r.status === 'pending').length;
-    const over    = merged.filter(r => r.status === 'მეტობა').length;
-    const pending = merged.filter(r => r.status === 'pending').length;
-
-    document.getElementById('statTotal').textContent   = merged.length;
-    document.getElementById('statMatched').textContent = matched;
-    document.getElementById('statUnder').textContent   = under;
-    document.getElementById('statOver').textContent    = over;
-    document.getElementById('statPending').textContent = pending;
-
-    allResults = merged;
-    renderResultsTable(merged);
+    const [opRes, resRes] = await Promise.all([
+      fetch(`${SCRIPT_URL}?action=getOperation&id=${id}`),
+      fetch(`${SCRIPT_URL}?action=getResults&id=${id}`)
+    ]);
+    const opData  = await opRes.json();
+    const resData = await resRes.json();
+    processResults(id, opData, resData);
   } catch(e) {
     document.getElementById('resultsTable').innerHTML = '<div class="loading">შეცდომა მონაცემების ჩატვირთვისას</div>';
   }
+  hideSync();
+}
+
+function processResults(id, opData, resData) {
+  if (id !== currentOpId) return;
+
+  allExpected = opData.items || [];
+  allResults  = resData.results || [];
+
+  const status = opData.status || 'მიმდინარე';
+  currentStatus = status;
+  updateStatusUI(status);
+
+  const merged = allExpected.map(exp => {
+    const found = allResults.find(r => r.barcode === exp.barcode);
+    if (found) {
+      if (found.status === 'ლიშნური') found.status = 'მეტობა';
+      return found;
+    }
+    return {
+      barcode: exp.barcode, productName: exp.productName,
+      colorSize: exp.colorSize, expectedQty: exp.expectedQty,
+      scannedQty: 0, difference: -exp.expectedQty, status: 'pending'
+    };
+  });
+
+  const matched = merged.filter(r => r.status === 'სწორი').length;
+  const under   = merged.filter(r => r.status === 'ნაკლები' || r.status === 'pending').length;
+  const over    = merged.filter(r => r.status === 'მეტობა').length;
+  const pending = merged.filter(r => r.status === 'pending').length;
+
+  document.getElementById('statTotal').textContent   = merged.length;
+  document.getElementById('statMatched').textContent = matched;
+  document.getElementById('statUnder').textContent   = under;
+  document.getElementById('statOver').textContent    = over;
+  document.getElementById('statPending').textContent = pending;
+
+  allResults = merged;
+  cacheSet('bh_results_' + id, merged);
+  renderResultsTable(merged);
+}
+
+function renderCachedResults(merged) {
+  if (!Array.isArray(merged)) return;
+  const matched = merged.filter(r => r.status === 'სწორი').length;
+  const under   = merged.filter(r => r.status === 'ნაკლები' || r.status === 'pending').length;
+  const over    = merged.filter(r => r.status === 'მეტობა').length;
+  const pending = merged.filter(r => r.status === 'pending').length;
+  document.getElementById('statTotal').textContent   = merged.length;
+  document.getElementById('statMatched').textContent = matched;
+  document.getElementById('statUnder').textContent   = under;
+  document.getElementById('statOver').textContent    = over;
+  document.getElementById('statPending').textContent = pending;
+  allResults = merged;
+  renderResultsTable(merged);
 }
 
 function renderResultsTable(results) {

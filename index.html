@@ -23,6 +23,8 @@
     --orange-light: #FFF3CD;
     --blue: #1B4F8A;
     --blue-light: #E8F0FE;
+    --purple: #6B21A8;
+    --purple-light: #F3E8FF;
     --radius: 10px;
     --mono: 'DM Mono', monospace;
     --font: 'Noto Sans Georgian', sans-serif;
@@ -172,6 +174,7 @@
   .pill-green { background: var(--accent-light); color: var(--green); }
   .pill-red { background: var(--red-light); color: var(--red); }
   .pill-orange { background: var(--orange-light); color: var(--orange); }
+  .pill-purple { background: var(--purple-light); color: var(--purple); }
 
   /* BUTTONS */
   .btn {
@@ -403,6 +406,7 @@
             <span class="ftab" onclick="filterResults('ნაკლები', this)">− ნაკლები</span>
             <span class="ftab" onclick="filterResults('მეტობა', this)">+ მეტობა</span>
             <span class="ftab" onclick="filterResults('pending', this)">○ ელოდება</span>
+            <span class="ftab" onclick="filterResults('unknown', this)" style="color:var(--purple)">⚠ უცნობი</span>
           </div>
         </div>
 
@@ -655,17 +659,19 @@ function renderResultsTable(results) {
       </thead>
       <tbody>
         ${results.map((r, i) => {
-          const cls = r.status === 'სწორი' ? 'row-matched' : r.status === 'მეტობა' ? 'row-over' : 'row-under';
-          const pill = r.status === 'სწორი' ? 'pill-green' : r.status === 'მეტობა' ? 'pill-orange' : 'pill-red';
-          const label = r.status === 'pending' ? 'ელოდება' : r.status;
-          const diff = r.difference !== undefined ? (r.difference > 0 ? '+' + r.difference : r.difference) : '—';
-          return `<tr class="${cls}">
+          const isUnknown = r.status === 'unknown' || (r.expectedQty === 0 && r.productName && r.productName.includes('უცნობი'));
+          const cls = isUnknown ? '' : r.status === 'სწორი' ? 'row-matched' : r.status === 'მეტობა' ? 'row-over' : 'row-under';
+          const pill = isUnknown ? 'pill-purple' : r.status === 'სწორი' ? 'pill-green' : r.status === 'მეტობა' ? 'pill-orange' : 'pill-red';
+          const label = isUnknown ? 'უცნობი' : r.status === 'pending' ? 'ელოდება' : r.status;
+          const diff = isUnknown ? '+' + r.scannedQty : r.difference !== undefined ? (r.difference > 0 ? '+' + r.difference : r.difference) : '—';
+          const rowStyle = isUnknown ? 'border-left: 3px solid var(--purple);' : '';
+          return `<tr style="${rowStyle}">
             <td style="text-align:center;color:var(--muted);font-size:12px">${i + 1}</td>
             <td class="mono" style="font-size:12px">${r.barcode}</td>
-            <td>${r.productName || '—'}</td>
-            <td style="text-align:center">${r.expectedQty}</td>
+            <td style="${isUnknown ? 'color:var(--purple)' : ''}">${r.productName || '—'}</td>
+            <td style="text-align:center">${isUnknown ? '—' : r.expectedQty}</td>
             <td style="text-align:center">${r.scannedQty ?? '—'}</td>
-            <td style="text-align:center; font-weight:600">${diff}</td>
+            <td style="text-align:center; font-weight:600; ${isUnknown ? 'color:var(--purple)' : ''}">${diff}</td>
             <td><span class="pill ${pill}">${label}</span></td>
           </tr>`;
         }).join('')}
@@ -688,14 +694,16 @@ function applySearch() {
 
   let filtered = allResults;
 
-  // სტატუსის ფილტრი
   if (currentFilter === 'pending') {
     filtered = filtered.filter(r => r.status === 'pending');
+  } else if (currentFilter === 'unknown') {
+    filtered = filtered.filter(r =>
+      r.expectedQty === 0 && r.productName && r.productName.includes('უცნობი')
+    );
   } else if (currentFilter !== 'all') {
     filtered = filtered.filter(r => r.status === currentFilter);
   }
 
-  // საძიებო ველი
   if (q) {
     filtered = filtered.filter(r =>
       (r.barcode || '').toLowerCase().includes(q) ||

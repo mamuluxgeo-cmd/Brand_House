@@ -1,13 +1,18 @@
 {
+  "id": "/Brand_House/scan.html",
   "name": "Brand House · სკანერი",
   "short_name": "BH Scan",
   "description": "Brand House საწყობის სკანერი",
-  "start_url": "/Brand_House/scan.html",
+  "start_url": "/Brand_House/scan.html?source=pwa",
   "scope": "/Brand_House/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#1B4332",
   "theme_color": "#1B4332",
+  "lang": "ka",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "utilities"],
   "icons": [
     {
       "src": "logo.png",
@@ -20,6 +25,21 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "სკანერის გახსნა",
+      "short_name": "სკანერი",
+      "description": "Brand House სკანერის სწრაფად გახსნა",
+      "url": "/Brand_House/scan.html?source=shortcut",
+      "icons": [
+        {
+          "src": "logo.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

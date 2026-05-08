@@ -5,6 +5,7 @@
 
 // ⚠️ შეცვალე შენი Google Sheet-ის ID
 const SHEET_ID = 'YOUR_GOOGLE_SHEET_ID_HERE';
+const TZ = 'Asia/Tbilisi';
 
 function getSpreadsheet() {
   return SpreadsheetApp.openById(SHEET_ID);
@@ -48,44 +49,88 @@ function ensureSheet(name, headers) {
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
+    if (headers && headers.length) {
+      sheet.appendRow(headers);
+      sheet.setFrozenRows(1);
+    }
+  } else if (headers && headers.length && sheet.getLastRow() === 0) {
     sheet.appendRow(headers);
     sheet.setFrozenRows(1);
   }
   return sheet;
 }
 
-function getNextId() {
-  const sheet = ensureSheet('Operations', []);
-  const last = sheet.getLastRow();
+function nowDate() {
+  return Utilities.formatDate(new Date(), TZ, 'dd.MM.yyyy');
+}
+
+function nowDateTime() {
+  return Utilities.formatDate(new Date(), TZ, 'dd.MM.yyyy HH:mm:ss');
+}
+
+function getNextIdLocked(opsSheet) {
+  const last = opsSheet.getLastRow();
   if (last <= 1) return 1001;
-  const ids = sheet.getRange(2, 1, last - 1, 1).getValues().flat().filter(x => x);
-  return ids.length ? Math.max(...ids) + 1 : 1001;
+  const ids = opsSheet.getRange(2, 1, last - 1, 1)
+    .getValues()
+    .flat()
+    .map(v => Number(v))
+    .filter(v => !isNaN(v));
+  return ids.length ? Math.max.apply(null, ids) + 1 : 1001;
+}
+
+function deleteRowsByOperationId(sheet, operationId, columnIndex) {
+  if (!sheet || sheet.getLastRow() <= 1) return 0;
+  const id = String(operationId);
+  const last = sheet.getLastRow();
+  const values = sheet.getRange(2, columnIndex, last - 1, 1).getValues();
+  let deleted = 0;
+
+  for (let i = values.length - 1; i >= 0; i--) {
+    if (String(values[i][0]) === id) {
+      sheet.deleteRow(i + 2);
+      deleted++;
+    }
+  }
+  return deleted;
 }
 
 // ========== OPERATIONS ==========
 
 function createOperation(data) {
-  const opsSheet = ensureSheet('Operations', [
-    'ID', 'თარიღი', 'ფაილი', 'სტატუსი', 'ჯამი', 'შექმნილია', 'თანამშრომელი'
-  ]);
-  const itemsSheet = ensureSheet('Items', [
-    'OperationID', 'ბარკოდი', 'საქონელი', 'ფერი/ზომა', 'მოსალოდნელი', 'ფასი'
-  ]);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
 
-  const id = getNextId();
-  const now = Utilities.formatDate(new Date(), 'Asia/Tbilisi', 'dd.MM.yyyy HH:mm');
-  const date = Utilities.formatDate(new Date(), 'Asia/Tbilisi', 'dd.MM.yyyy');
+  try {
+    const opsSheet = ensureSheet('Operations', [
+      'ID', 'თარიღი', 'ფაილი', 'სტატუსი', 'ჯამი', 'შექმნილია', 'თანამშრომელი'
+    ]);
+    const itemsSheet = ensureSheet('Items', [
+      'OperationID', 'ბარკოდი', 'საქონელი', 'ფერი/ზომა', 'მოსალოდნელი', 'ფასი'
+    ]);
 
-  opsSheet.appendRow([id, date, data.fileName, 'მიმდინარე', data.items.length, now, '']);
+    const id = getNextIdLocked(opsSheet);
+    const items = Array.isArray(data.items) ? data.items : [];
 
-  const rows = data.items.map(item => [
-    id, item.barcode, item.productName, item.colorSize, item.expectedQty, item.price || 0
-  ]);
-  if (rows.length > 0) {
-    itemsSheet.getRange(itemsSheet.getLastRow() + 1, 1, rows.length, 6).setValues(rows);
+    opsSheet.appendRow([id, nowDate(), data.fileName || '', 'მიმდინარე', items.length, nowDateTime(), '']);
+
+    const rows = items.map(item => [
+      id,
+      String(item.barcode || '').trim(),
+      item.productName || '',
+      item.colorSize || '',
+      Number(item.expectedQty || 0),
+      Number(item.price || 0)
+    ]);
+
+    if (rows.length > 0) {
+      itemsSheet.getRange(itemsSheet.getLastRow() + 1, 1, rows.length, 6).setValues(rows);
+    }
+
+    return { success: true, operationId: id };
+  } finally {
+    lock.releaseLock();
   }
-
-  return { success: true, operationId: id };
 }
 
 function getOperationsList() {
@@ -97,8 +142,13 @@ function getOperationsList() {
 
   const rows = opsSheet.getRange(2, 1, last - 1, 7).getValues();
   const operations = rows.map(r => ({
-    id: r[0], date: r[1], fileName: r[2],
-    status: r[3], totalItems: r[4], createdAt: r[5], employee: r[6] || ''
+    id: r[0],
+    date: r[1],
+    fileName: r[2],
+    status: r[3],
+    totalItems: r[4],
+    createdAt: r[5],
+    employee: r[6] || ''
   })).reverse();
 
   return { operations };
@@ -107,8 +157,12 @@ function getOperationsList() {
 // ========== ITEMS ==========
 
 function getOperation(id) {
-  const opsSheet = ensureSheet('Operations', []);
-  const itemsSheet = ensureSheet('Items', []);
+  const opsSheet = ensureSheet('Operations', [
+    'ID', 'თარიღი', 'ფაილი', 'სტატუსი', 'ჯამი', 'შექმნილია', 'თანამშრომელი'
+  ]);
+  const itemsSheet = ensureSheet('Items', [
+    'OperationID', 'ბარკოდი', 'საქონელი', 'ფერი/ზომა', 'მოსალოდნელი', 'ფასი'
+  ]);
 
   const opsLast = opsSheet.getLastRow();
   if (opsLast <= 1) return { error: 'ოპერაცია ვერ მოიძებნა' };
@@ -124,118 +178,140 @@ function getOperation(id) {
     items = itemsRows
       .filter(r => String(r[0]) === String(id))
       .map(r => ({
-        barcode: r[1], productName: r[2],
-        colorSize: r[3], expectedQty: Number(r[4]), price: r[5]
+        barcode: String(r[1] || '').trim(),
+        productName: r[2] || '',
+        colorSize: r[3] || '',
+        expectedQty: Number(r[4] || 0),
+        price: Number(r[5] || 0)
       }));
   }
 
   return {
-    operationId: id, date: opRow[1], fileName: opRow[2],
-    status: opRow[3], items
+    operationId: id,
+    date: opRow[1],
+    fileName: opRow[2],
+    status: opRow[3],
+    employee: opRow[6] || '',
+    items
   };
 }
 
 // ========== RESULTS ==========
 
 function submitScans(data) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    const operationId = String(data.operationId || '').trim();
+    const employee = String(data.employee || '').trim();
+    const incoming = Array.isArray(data.results) ? data.results : [];
+
+    if (!operationId) return { error: 'Operation ID is required' };
+
+    const resultsSheet = ensureSheet('Results', [
+      'OperationID', 'თანამშრომელი', 'ბარკოდი', 'საქონელი', 'ფერი/ზომა',
+      'მოსალოდნელი', 'დათვლილი', 'სხვაობა', 'სტატუსი', 'გაგზავნილია'
+    ]);
+
+    // ამ ოპერაციაზე ძველი შედეგები იშლება და ახლიდან იწერება ერთიანად.
+    // LockService იცავს პარალელური გაგზავნისას ნახევრად ჩაწერას/არევას.
+    deleteRowsByOperationId(resultsSheet, operationId, 1);
+
+    const submittedAt = nowDateTime();
+    const rows = incoming.map(item => {
+      const expectedQty = Number(item.expectedQty || 0);
+      const scannedQty = Number(item.scannedQty || 0);
+      const diff = scannedQty - expectedQty;
+      const status = diff === 0 ? 'სწორი' : (diff > 0 ? 'მეტობა' : 'ნაკლები');
+      return [
+        operationId,
+        employee,
+        String(item.barcode || '').trim(),
+        item.productName || '',
+        item.colorSize || '',
+        expectedQty,
+        scannedQty,
+        diff,
+        status,
+        submittedAt
+      ];
+    });
+
+    if (rows.length > 0) {
+      resultsSheet.getRange(resultsSheet.getLastRow() + 1, 1, rows.length, 10).setValues(rows);
+    }
+
+    const opsSheet = getSpreadsheet().getSheetByName('Operations');
+    if (opsSheet && opsSheet.getLastRow() > 1) {
+      const opsRows = opsSheet.getRange(2, 1, opsSheet.getLastRow() - 1, 1).getValues();
+      for (let i = 0; i < opsRows.length; i++) {
+        if (String(opsRows[i][0]) === operationId) {
+          opsSheet.getRange(i + 2, 4).setValue('დასრულებული');
+          opsSheet.getRange(i + 2, 7).setValue(employee);
+          break;
+        }
+      }
+    }
+
+    return { success: true, saved: rows.length, submittedAt };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function updateStatus(data) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    const opsSheet = getSpreadsheet().getSheetByName('Operations');
+    if (!opsSheet) return { error: 'No operations sheet' };
+    const last = opsSheet.getLastRow();
+    if (last <= 1) return { error: 'Not found' };
+
+    const operationId = String(data.operationId || '').trim();
+    const status = String(data.status || '').trim();
+    const rows = opsSheet.getRange(2, 1, last - 1, 1).getValues();
+
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i][0]) === operationId) {
+        opsSheet.getRange(i + 2, 4).setValue(status || 'მიმდინარე');
+        return { success: true };
+      }
+    }
+    return { error: 'Operation not found' };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function deleteOperation(data) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    const ss = getSpreadsheet();
+    const id = String(data.operationId || '').trim();
+    if (!id) return { error: 'Operation ID is required' };
+
+    const deleted = {
+      operations: deleteRowsByOperationId(ss.getSheetByName('Operations'), id, 1),
+      items: deleteRowsByOperationId(ss.getSheetByName('Items'), id, 1),
+      results: deleteRowsByOperationId(ss.getSheetByName('Results'), id, 1)
+    };
+
+    return { success: true, deleted };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getResults(id) {
   const resultsSheet = ensureSheet('Results', [
     'OperationID', 'თანამშრომელი', 'ბარკოდი', 'საქონელი', 'ფერი/ზომა',
     'მოსალოდნელი', 'დათვლილი', 'სხვაობა', 'სტატუსი', 'გაგზავნილია'
   ]);
-
-  // წინა შედეგების წაშლა ამ ოპერაციაზე
-  const last = resultsSheet.getLastRow();
-  if (last > 1) {
-    const existing = resultsSheet.getRange(2, 1, last - 1, 1).getValues();
-    for (let i = existing.length - 1; i >= 0; i--) {
-      if (String(existing[i][0]) === String(data.operationId)) {
-        resultsSheet.deleteRow(i + 2);
-      }
-    }
-  }
-
-  const now = Utilities.formatDate(new Date(), 'Asia/Tbilisi', 'dd.MM.yyyy HH:mm:ss');
-  const rows = data.results.map(item => {
-    const diff = item.scannedQty - item.expectedQty;
-    const status = diff === 0 ? 'სწორი' : (diff > 0 ? 'ლიშნური' : 'ნაკლები');
-    return [
-      data.operationId, data.employee, item.barcode, item.productName,
-      item.colorSize, item.expectedQty, item.scannedQty, diff, status, now
-    ];
-  });
-
-  if (rows.length > 0) {
-    resultsSheet.getRange(resultsSheet.getLastRow() + 1, 1, rows.length, 10).setValues(rows);
-  }
-
-  // სტატუსის განახლება
-  const opsSheet = getSpreadsheet().getSheetByName('Operations');
-  const opsLast = opsSheet.getLastRow();
-  if (opsLast > 1) {
-    const opsRows = opsSheet.getRange(2, 1, opsLast - 1, 1).getValues();
-    for (let i = 0; i < opsRows.length; i++) {
-      if (String(opsRows[i][0]) === String(data.operationId)) {
-        opsSheet.getRange(i + 2, 4).setValue('დასრულებული');
-        opsSheet.getRange(i + 2, 7).setValue(data.employee);
-        break;
-      }
-    }
-  }
-
-  return { success: true };
-}
-
-function updateStatus(data) {
-  const opsSheet = getSpreadsheet().getSheetByName('Operations');
-  if (!opsSheet) return { error: 'No operations sheet' };
-  const last = opsSheet.getLastRow();
-  if (last <= 1) return { error: 'Not found' };
-  const rows = opsSheet.getRange(2, 1, last - 1, 1).getValues();
-  for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) === String(data.operationId)) {
-      opsSheet.getRange(i + 2, 4).setValue(data.status);
-      return { success: true };
-    }
-  }
-  return { error: 'Operation not found' };
-}
-
-function deleteOperation(data) {
-  const ss = getSpreadsheet();
-  const id = String(data.operationId);
-
-  // Delete from Operations
-  const opsSheet = ss.getSheetByName('Operations');
-  if (opsSheet && opsSheet.getLastRow() > 1) {
-    const rows = opsSheet.getRange(2, 1, opsSheet.getLastRow() - 1, 1).getValues();
-    for (let i = rows.length - 1; i >= 0; i--) {
-      if (String(rows[i][0]) === id) opsSheet.deleteRow(i + 2);
-    }
-  }
-
-  // Delete from Items
-  const itemsSheet = ss.getSheetByName('Items');
-  if (itemsSheet && itemsSheet.getLastRow() > 1) {
-    const rows = itemsSheet.getRange(2, 1, itemsSheet.getLastRow() - 1, 1).getValues();
-    for (let i = rows.length - 1; i >= 0; i--) {
-      if (String(rows[i][0]) === id) itemsSheet.deleteRow(i + 2);
-    }
-  }
-
-  // Delete from Results
-  const resSheet = ss.getSheetByName('Results');
-  if (resSheet && resSheet.getLastRow() > 1) {
-    const rows = resSheet.getRange(2, 1, resSheet.getLastRow() - 1, 1).getValues();
-    for (let i = rows.length - 1; i >= 0; i--) {
-      if (String(rows[i][0]) === id) resSheet.deleteRow(i + 2);
-    }
-  }
-
-  return { success: true };
-}
-
-function getResults(id) {
-  const resultsSheet = ensureSheet('Results', []);
   const last = resultsSheet.getLastRow();
   if (last <= 1) return { results: [] };
 
@@ -243,8 +319,15 @@ function getResults(id) {
   const results = rows
     .filter(r => String(r[0]) === String(id))
     .map(r => ({
-      barcode: r[2], productName: r[3], colorSize: r[4],
-      expectedQty: r[5], scannedQty: r[6], difference: r[7], status: r[8]
+      employee: r[1] || '',
+      barcode: String(r[2] || '').trim(),
+      productName: r[3] || '',
+      colorSize: r[4] || '',
+      expectedQty: Number(r[5] || 0),
+      scannedQty: Number(r[6] || 0),
+      difference: Number(r[7] || 0),
+      status: r[8] === 'ლიშნური' ? 'მეტობა' : r[8],
+      submittedAt: r[9] || ''
     }));
 
   return { results };

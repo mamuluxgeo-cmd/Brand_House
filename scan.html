@@ -120,18 +120,18 @@
   .filter-bar {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    padding: 10px 14px;
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
+    padding: 8px 10px;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
     flex-shrink: 0;
   }
   .filter-bar::-webkit-scrollbar { display: none; }
   .ftab {
-    flex-shrink: 0;
-    padding: 5px 14px;
-    border-radius: 20px;
-    font-size: 12px;
+    text-align: center;
+    padding: 5px 2px;
+    border-radius: 8px;
+    font-size: 11px;
     font-weight: 500;
     border: 1.5px solid var(--border);
     background: var(--surface);
@@ -499,17 +499,19 @@
 
   <div class="filter-bar">
     <span class="ftab active" onclick="setFilter('all', this)">ყველა <span id="cntAll">0</span></span>
-    <span class="ftab" onclick="setFilter('matched', this)">✓ სწორი <span id="cntMatched">0</span></span>
-    <span class="ftab" onclick="setFilter('under', this)">− ნაკლები <span id="cntUnder">0</span></span>
-    <span class="ftab" onclick="setFilter('over', this)">+ მეტობა <span id="cntOver">0</span></span>
-    <span class="ftab" onclick="setFilter('pending', this)">○ ელოდება <span id="cntPending">0</span></span>
-    <span class="ftab" onclick="setFilter('unknown', this)">⚠️ უცნობი <span id="cntUnknown">0</span></span>
+    <span class="ftab" onclick="setFilter('matched', this)">სწორ. <span id="cntMatched">0</span></span>
+    <span class="ftab" onclick="setFilter('under', this)">ნაკ. <span id="cntUnder">0</span></span>
+    <span class="ftab" onclick="setFilter('over', this)">მეტ. <span id="cntOver">0</span></span>
+    <span class="ftab" onclick="setFilter('pending', this)">ელოდ. <span id="cntPending">0</span></span>
+    <span class="ftab" onclick="setFilter('unknown', this)">უცნ. <span id="cntUnknown">0</span></span>
   </div>
 
   <div class="scan-input-wrap">
     <div class="scan-input-label">ბარკოდი</div>
     <div class="scan-input-row">
-      <input type="text" id="barcodeInput" placeholder="სკანერი ან ხელით" autocomplete="off" autocorrect="off" spellcheck="false">
+      <input type="text" id="barcodeInput" placeholder="სკანერი ან ხელით"
+    autocomplete="off" autocorrect="off" autocapitalize="off"
+    spellcheck="false" inputmode="text">
       <button class="clear-btn" onclick="clearInput()">✕</button>
     </div>
     <div class="scan-count-row">
@@ -809,14 +811,34 @@ function getStatus(item) {
 
 function renderItems() {
   const list = document.getElementById('itemsList');
-  let entries = Object.entries(items);
 
-  // Filter
+  // უცნობი ფილტრი
+  if (currentFilter === 'unknown') {
+    const unknownEntries = Object.entries(unknownBarcodes);
+    if (!unknownEntries.length) {
+      list.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>უცნობი ბარკოდი არ არის</p></div>';
+      return;
+    }
+    list.innerHTML = unknownEntries.map(([barcode, data]) => `
+      <div class="item-card under">
+        <div class="item-info">
+          <div class="item-barcode">${barcode}</div>
+          <div class="item-name">⚠️ უცნობი ბარკოდი</div>
+          <div class="item-status red">${data.lastTime}</div>
+        </div>
+        <div class="item-qty">
+          <div class="nums red">${data.count}</div>
+          <div class="denom" style="font-size:10px;color:var(--muted)">სკანი</div>
+        </div>
+      </div>`).join('');
+    return;
+  }
+
+  let entries = Object.entries(items);
   if (currentFilter !== 'all') {
     entries = entries.filter(([, item]) => getStatus(item) === currentFilter);
   }
 
-  // Sort: most recently scanned first, then pending
   entries.sort(([a], [b]) => {
     const ai = scanLog.findIndex(s => s.barcode === a);
     const bi = scanLog.findIndex(s => s.barcode === b);
@@ -835,9 +857,8 @@ function renderItems() {
     const status = getStatus(item);
     const diff = item.scannedQty - item.expectedQty;
     const colorClass = status === 'matched' ? 'green' : status === 'over' ? 'orange' : status === 'under' ? 'red' : 'muted';
-    const statusText = status === 'matched' ? '✓ სწორი' : status === 'over' ? `+${diff} მეტობა` : status === 'under' ? `${diff} ნაკლები` : '○ სკანი ელოდება';
+    const statusText = status === 'matched' ? '✓ სწორი' : status === 'over' ? `+${diff} მეტ.` : status === 'under' ? `${diff} ნაკ.` : '○ ელოდება';
     const safeId = barcode.replace(/[^a-zA-Z0-9]/g,'-');
-
     return `<div class="item-card ${status}" id="card-${safeId}" onclick="openDetail('${barcode.replace(/'/g,"\\'")}')">
       <div class="item-info">
         <div class="item-barcode">${barcode}</div>

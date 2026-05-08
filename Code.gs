@@ -95,6 +95,23 @@ function deleteRowsByOperationId(sheet, operationId, columnIndex) {
   return deleted;
 }
 
+function deleteRowsByOperationAndEmployee(sheet, operationId, employee) {
+  if (!sheet || sheet.getLastRow() <= 1) return 0;
+  const id = String(operationId);
+  const emp = String(employee || '').trim();
+  const last = sheet.getLastRow();
+  const values = sheet.getRange(2, 1, last - 1, 2).getValues();
+  let deleted = 0;
+
+  for (let i = values.length - 1; i >= 0; i--) {
+    if (String(values[i][0]) === id && String(values[i][1] || '').trim() === emp) {
+      sheet.deleteRow(i + 2);
+      deleted++;
+    }
+  }
+  return deleted;
+}
+
 // ========== OPERATIONS ==========
 
 function createOperation(data) {
@@ -208,15 +225,16 @@ function submitScans(data) {
     const incoming = Array.isArray(data.results) ? data.results : [];
 
     if (!operationId) return { error: 'Operation ID is required' };
+    if (!employee) return { error: 'Employee is required' };
 
     const resultsSheet = ensureSheet('Results', [
       'OperationID', 'თანამშრომელი', 'ბარკოდი', 'საქონელი', 'ფერი/ზომა',
       'მოსალოდნელი', 'დათვლილი', 'სხვაობა', 'სტატუსი', 'გაგზავნილია'
     ]);
 
-    // ამ ოპერაციაზე ძველი შედეგები იშლება და ახლიდან იწერება ერთიანად.
-    // LockService იცავს პარალელური გაგზავნისას ნახევრად ჩაწერას/არევას.
-    deleteRowsByOperationId(resultsSheet, operationId, 1);
+    // მხოლოდ ამ თანამშრომლის ძველი გაგზავნა იცვლება.
+    // სხვა თანამშრომლის შედეგები იგივე ოპერაციაზე რჩება და getResults-ში ჯამდება.
+    const replacedRows = deleteRowsByOperationAndEmployee(resultsSheet, operationId, employee);
 
     const submittedAt = nowDateTime();
     const rows = incoming.map(item => {
@@ -244,17 +262,20 @@ function submitScans(data) {
 
     const opsSheet = getSpreadsheet().getSheetByName('Operations');
     if (opsSheet && opsSheet.getLastRow() > 1) {
-      const opsRows = opsSheet.getRange(2, 1, opsSheet.getLastRow() - 1, 1).getValues();
+      const opsRows = opsSheet.getRange(2, 1, opsSheet.getLastRow() - 1, 7).getValues();
       for (let i = 0; i < opsRows.length; i++) {
         if (String(opsRows[i][0]) === operationId) {
           opsSheet.getRange(i + 2, 4).setValue('დასრულებული');
-          opsSheet.getRange(i + 2, 7).setValue(employee);
+          const oldEmployee = String(opsRows[i][6] || '').trim();
+          const employees = oldEmployee ? oldEmployee.split(',').map(x => x.trim()).filter(Boolean) : [];
+          if (employees.indexOf(employee) === -1) employees.push(employee);
+          opsSheet.getRange(i + 2, 7).setValue(employees.join(', '));
           break;
         }
       }
     }
 
-    return { success: true, saved: rows.length, submittedAt };
+    return { success: true, saved: rows.length, replacedRows, submittedAt };
   } finally {
     lock.releaseLock();
   }
@@ -315,20 +336,48 @@ function getResults(id) {
   const last = resultsSheet.getLastRow();
   if (last <= 1) return { results: [] };
 
-  const rows = resultsSheet.getRange(2, 1, last - 1, 10).getValues();
-  const results = rows
-    .filter(r => String(r[0]) === String(id))
-    .map(r => ({
-      employee: r[1] || '',
-      barcode: String(r[2] || '').trim(),
-      productName: r[3] || '',
-      colorSize: r[4] || '',
-      expectedQty: Number(r[5] || 0),
-      scannedQty: Number(r[6] || 0),
-      difference: Number(r[7] || 0),
-      status: r[8] === 'ლიშნური' ? 'მეტობა' : r[8],
-      submittedAt: r[9] || ''
-    }));
+  const rows = resultsSheet.getRange(2, 1, last - 1, 10).getValues()
+    .filter(r => String(r[0]) === String(id));
+
+  const byBarcode = {};
+  rows.forEach(r => {
+    const barcode = String(r[2] || '').trim();
+    if (!barcode) return;
+
+    if (!byBarcode[barcode]) {
+      byBarcode[barcode] = {
+        employees: [],
+        barcode,
+        productName: r[3] || '',
+        colorSize: r[4] || '',
+        expectedQty: Number(r[5] || 0),
+        scannedQty: 0,
+        submittedAt: r[9] || ''
+      };
+    }
+
+    const emp = String(r[1] || '').trim();
+    if (emp && byBarcode[barcode].employees.indexOf(emp) === -1) byBarcode[barcode].employees.push(emp);
+    byBarcode[barcode].scannedQty += Number(r[6] || 0);
+    if (r[9]) byBarcode[barcode].submittedAt = r[9];
+  });
+
+  const results = Object.keys(byBarcode).map(barcode => {
+    const r = byBarcode[barcode];
+    const difference = r.scannedQty - r.expectedQty;
+    const status = difference === 0 ? 'სწორი' : (difference > 0 ? 'მეტობა' : 'ნაკლები');
+    return {
+      employee: r.employees.join(', '),
+      barcode: r.barcode,
+      productName: r.productName,
+      colorSize: r.colorSize,
+      expectedQty: r.expectedQty,
+      scannedQty: r.scannedQty,
+      difference,
+      status,
+      submittedAt: r.submittedAt
+    };
+  });
 
   return { results };
 }

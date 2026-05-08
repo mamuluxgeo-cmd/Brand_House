@@ -1,4 +1,4 @@
-const CACHE = 'brandhouse-v3-20260508-autosave';
+const CACHE = 'brandhouse-v4-20260508-install';
 const APP_SCOPE = '/Brand_House/';
 const ASSETS = [
   '/Brand_House/scan.html',
@@ -9,7 +9,7 @@ const ASSETS = [
 ];
 
 const AUTOSAVE_INJECTION = `
-<script data-bh-autosave="v3">
+<script data-bh-autosave="v4">
 (function () {
   if (window.__BH_STRONG_AUTOSAVE__) return;
   window.__BH_STRONG_AUTOSAVE__ = true;
@@ -174,7 +174,7 @@ const AUTOSAVE_INJECTION = `
     window[name] = wrapped;
   }
 
-  function setup() {
+  function setupAutosave() {
     ensureBadge();
     restoreFromSavedSession();
 
@@ -206,6 +206,64 @@ const AUTOSAVE_INJECTION = `
     });
 
     setInterval(function () { strongSave('interval'); }, 1000);
+  }
+
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+
+  function setupInstallPrompt() {
+    if (isStandalone()) return;
+    if (document.getElementById('bhInstallBox')) return;
+
+    let deferredPrompt = null;
+
+    const box = document.createElement('div');
+    box.id = 'bhInstallBox';
+    box.innerHTML = '<div style="font-weight:600;font-size:13px;margin-bottom:3px;">📲 აპად დაყენება</div><div style="font-size:11px;opacity:.82;line-height:1.35;">დააყენე ტელეფონში, რომ ბრაუზერის გარეშე გაიხსნას.</div><div style="display:flex;gap:8px;margin-top:9px;"><button id="bhInstallBtn" style="flex:1;border:0;background:#fff;color:#1B4332;border-radius:10px;padding:10px;font-weight:700;font-family:inherit;">დაყენება</button><button id="bhInstallClose" style="width:42px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:10px;font-weight:700;">✕</button></div><div id="bhInstallHelp" style="display:none;font-size:11px;opacity:.85;margin-top:8px;line-height:1.35;">თუ ღილაკმა არ იმუშავა: Chrome ⋮ → Add to Home screen / Install app.</div>';
+    box.style.cssText = 'position:fixed;left:14px;right:14px;bottom:82px;z-index:2000;background:#1B4332;color:#fff;border-radius:16px;padding:13px 14px;box-shadow:0 12px 30px rgba(0,0,0,.28);font-family:inherit;';
+
+    document.body.appendChild(box);
+
+    const btn = document.getElementById('bhInstallBtn');
+    const close = document.getElementById('bhInstallClose');
+    const help = document.getElementById('bhInstallHelp');
+
+    close.addEventListener('click', function () {
+      box.remove();
+      localStorage.setItem('bh_install_closed', Date.now().toString());
+    });
+
+    btn.addEventListener('click', async function () {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        try { await deferredPrompt.userChoice; } catch (e) {}
+        deferredPrompt = null;
+        box.remove();
+      } else {
+        help.style.display = 'block';
+      }
+    });
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      btn.textContent = 'დაყენება';
+    });
+
+    window.addEventListener('appinstalled', function () {
+      localStorage.setItem('bh_app_installed', '1');
+      box.remove();
+    });
+
+    setTimeout(function () {
+      if (!deferredPrompt && help) help.style.display = 'block';
+    }, 2500);
+  }
+
+  function setup() {
+    setupAutosave();
+    setupInstallPrompt();
   }
 
   if (document.readyState === 'loading') {
@@ -257,9 +315,10 @@ function isScanPage(request) {
 }
 
 function injectAutosave(html) {
-  if (!html || html.includes('data-bh-autosave="v3"')) return html;
-  if (html.includes('</body>')) return html.replace('</body>', AUTOSAVE_INJECTION + '\n</body>');
-  return html + AUTOSAVE_INJECTION;
+  if (!html || html.includes('data-bh-autosave="v4"')) return html;
+  const withManifestVersion = html.replace('href="manifest.json"', 'href="manifest.json?v=4"');
+  if (withManifestVersion.includes('</body>')) return withManifestVersion.replace('</body>', AUTOSAVE_INJECTION + '\n</body>');
+  return withManifestVersion + AUTOSAVE_INJECTION;
 }
 
 async function responseWithAutosave(response, request) {

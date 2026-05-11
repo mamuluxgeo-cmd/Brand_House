@@ -12,6 +12,7 @@
   const KEEPALIVE_KEY = 'bh_last_alive_session';
 
   let lastPromotedBarcode = '';
+  let lastDetailBarcode = '';
   let deferredPrompt = null;
 
   writeJson(UI_KEY, {
@@ -140,6 +141,12 @@
     return barcodeEl ? normalize(barcodeEl.textContent) : '';
   }
 
+  function getDetailBarcode() {
+    const detail = document.getElementById('detailBarcode');
+    const barcode = detail ? normalize(detail.textContent) : '';
+    return barcode || lastDetailBarcode;
+  }
+
   function promoteBarcode(barcode, smooth) {
     const list = document.getElementById('itemsList');
     if (!list || !barcode) return;
@@ -167,6 +174,15 @@
     }
   }
 
+  function promoteCurrentDetail(delay) {
+    const barcode = getDetailBarcode();
+    if (!barcode) return;
+    setTimeout(function () {
+      forceSaveSession();
+      promoteBarcode(barcode, true);
+    }, typeof delay === 'number' ? delay : 120);
+  }
+
   function setupCardPromoteOnClick() {
     if (document.__bhPromoteClickAttached) return;
     document.__bhPromoteClickAttached = true;
@@ -174,8 +190,43 @@
       const card = event.target.closest ? event.target.closest('.item-card') : null;
       if (!card) return;
       const barcode = getCardBarcode(card);
-      if (barcode) setTimeout(function () { promoteBarcode(barcode, true); }, 40);
+      if (barcode) {
+        lastDetailBarcode = barcode;
+        setTimeout(function () { promoteBarcode(barcode, true); }, 40);
+      }
       forceSaveSession();
+    }, true);
+  }
+
+  function setupQuantityPromoteHooks() {
+    if (document.__bhQuantityPromoteAttached) return;
+    document.__bhQuantityPromoteAttached = true;
+
+    document.addEventListener('click', function (event) {
+      const target = event.target;
+      if (!target) return;
+
+      if (target.closest && target.closest('.item-card')) {
+        const card = target.closest('.item-card');
+        const barcode = getCardBarcode(card);
+        if (barcode) lastDetailBarcode = barcode;
+      }
+
+      const shouldPromote =
+        (target.classList && (target.classList.contains('qty-btn') || target.classList.contains('btn-save') || target.classList.contains('btn-reset'))) ||
+        (target.closest && target.closest('.qty-btn, .btn-save, .btn-reset'));
+
+      if (shouldPromote) promoteCurrentDetail(180);
+    }, true);
+
+    document.addEventListener('input', function (event) {
+      const target = event.target;
+      if (target && target.id === 'qtyInput') promoteCurrentDetail(220);
+    }, true);
+
+    document.addEventListener('change', function (event) {
+      const target = event.target;
+      if (target && target.id === 'qtyInput') promoteCurrentDetail(180);
     }, true);
   }
 
@@ -249,6 +300,7 @@
     restoreBackupIfNeeded();
     restoreKeyboardMode();
     setupCardPromoteOnClick();
+    setupQuantityPromoteHooks();
     setupPersistenceGuards();
     setupInstallPrompt();
     watchLastScan();

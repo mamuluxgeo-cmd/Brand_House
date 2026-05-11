@@ -1,4 +1,4 @@
-// Brand House scanner local enhancements — offline comfort without sound/keyboard blocking.
+// Brand House scanner local enhancements — quiet helper only.
 (function () {
   'use strict';
 
@@ -9,32 +9,16 @@
   const BACKUP_KEY = 'bh_session_backup';
   const OP_KEY = 'bh_last_op';
   const UI_KEY = 'bh_local_ui_settings';
-  const MAX_UNDO = 20;
 
-  let previousSessionText = '';
-  let undoStack = [];
-  let lastCount = -1;
   let lastPromotedBarcode = '';
   let deferredPrompt = null;
 
-  const settings = readJson(UI_KEY, {
+  writeJson(UI_KEY, {
+    sound: false,
+    vibration: false,
     manualOpen: false,
     paused: false
   });
-
-  // Sound/vibration is intentionally disabled.
-  settings.sound = false;
-  settings.vibration = false;
-  saveUi();
-
-  function readJson(key, fallback) {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch (e) {
-      return fallback;
-    }
-  }
 
   function writeJson(key, value) {
     try {
@@ -66,16 +50,6 @@
     try { return text ? JSON.parse(text) : null; } catch (e) { return null; }
   }
 
-  function getCountFromPage() {
-    const el = document.getElementById('scanCount');
-    const n = el ? Number(String(el.textContent || '').replace(/[^0-9.-]/g, '')) : 0;
-    return isNaN(n) ? 0 : n;
-  }
-
-  function saveUi() {
-    writeJson(UI_KEY, settings);
-  }
-
   function injectStyles() {
     if (document.getElementById('bhLocalStyles')) return;
     const style = document.createElement('style');
@@ -84,21 +58,6 @@
       .qty-editor{display:grid!important;grid-template-columns:58px minmax(82px,1fr) 58px!important;align-items:stretch!important;overflow:hidden!important}
       .qty-editor .qty-btn{width:58px!important;min-width:58px!important;height:54px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:28px!important;line-height:1!important;opacity:1!important;visibility:visible!important;color:#1A1A18!important}
       .qty-editor .qty-input{width:100%!important;min-width:0!important;height:54px!important;display:block!important;text-align:center!important}
-      .bh-tools{background:#fff;border-bottom:1px solid #E4E2DC;padding:8px 10px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;position:relative;z-index:30}
-      .bh-tool-btn{border:1px solid #E4E2DC;background:#F7F6F2;color:#1A1A18;border-radius:10px;padding:8px 4px;font-size:11px;font-family:inherit;font-weight:600;line-height:1.15;min-height:38px}
-      .bh-tool-btn.active{background:#1B4332;color:#fff;border-color:#1B4332}
-      .bh-status{background:#F7F6F2;border-bottom:1px solid #E4E2DC;padding:6px 12px;font-size:11px;color:#7A7870;display:flex;justify-content:space-between;gap:8px;align-items:center}
-      .bh-status b{color:#1B4332;font-weight:700}
-      .bh-manual-box{display:none;background:#fff;border-bottom:1px solid #E4E2DC;padding:10px;gap:8px}
-      .bh-manual-box.show{display:flex}
-      .bh-manual-input{flex:1;border:1.5px solid #E4E2DC;border-radius:10px;padding:11px 12px;font-size:15px;font-family:'DM Mono',monospace;outline:none}
-      .bh-manual-send{border:0;background:#1B4332;color:#fff;border-radius:10px;padding:0 14px;font-family:inherit;font-weight:700}
-      .bh-pause-cover{display:none;position:fixed;inset:0;background:rgba(27,67,50,.96);color:#fff;z-index:3000;align-items:center;justify-content:center;text-align:center;padding:24px}
-      .bh-pause-cover.show{display:flex}
-      .bh-pause-card{max-width:330px;width:100%}
-      .bh-pause-card h2{font-size:22px;margin-bottom:8px}
-      .bh-pause-card p{font-size:13px;opacity:.86;margin-bottom:18px;line-height:1.45}
-      .bh-continue-btn{width:100%;border:0;background:#fff;color:#1B4332;border-radius:14px;padding:15px;font-family:inherit;font-weight:800;font-size:15px}
       .item-card.bh-promoted{box-shadow:0 0 0 2px rgba(27,67,50,.18);animation:bhPromoteFlash .55s ease}
       @keyframes bhPromoteFlash{0%{transform:scale(1.015);background:#D8F3DC}100%{transform:scale(1);}}
       #bhInstallBox{position:fixed;left:14px;right:14px;bottom:82px;z-index:2000;background:#1B4332;color:#fff;border-radius:16px;padding:13px 14px;box-shadow:0 12px 30px rgba(0,0,0,.28);font-family:inherit}
@@ -106,73 +65,11 @@
     document.head.appendChild(style);
   }
 
-  function buildUi() {
-    if (!document.getElementById('screenScan') || document.getElementById('bhTools')) return;
-    const filterBar = document.querySelector('.filter-bar');
-    if (!filterBar) return;
-
-    const tools = document.createElement('div');
-    tools.id = 'bhTools';
-    tools.className = 'bh-tools';
-    tools.innerHTML = `
-      <button class="bh-tool-btn" id="bhUndoBtn">↩ ბოლო</button>
-      <button class="bh-tool-btn" id="bhManualBtn">⌨ ხელით</button>
-      <button class="bh-tool-btn" id="bhPauseBtn">⏸ პაუზა</button>
-    `;
-
-    const status = document.createElement('div');
-    status.id = 'bhStatus';
-    status.className = 'bh-status';
-    status.innerHTML = '<span>ტელეფონში შენახვა</span><b id="bhStatusText">მზადაა</b>';
-
-    const manual = document.createElement('div');
-    manual.id = 'bhManualBox';
-    manual.className = 'bh-manual-box';
-    manual.innerHTML = '<input id="bhManualInput" class="bh-manual-input" placeholder="ბარკოდი ხელით" inputmode="text"><button id="bhManualSend" class="bh-manual-send">დამატება</button>';
-
-    filterBar.parentNode.insertBefore(tools, filterBar.nextSibling);
-    filterBar.parentNode.insertBefore(status, tools.nextSibling);
-    filterBar.parentNode.insertBefore(manual, status.nextSibling);
-
-    const pause = document.createElement('div');
-    pause.id = 'bhPauseCover';
-    pause.className = 'bh-pause-cover';
-    pause.innerHTML = '<div class="bh-pause-card"><h2>პაუზაა</h2><p>ყველაფერი შენახულია ტელეფონში. შეგიძლია ეკრანი ჩაკეტო და მერე გააგრძელო.</p><button id="bhContinueBtn" class="bh-continue-btn">გაგრძელება</button></div>';
-    document.body.appendChild(pause);
-
-    document.getElementById('bhUndoBtn').addEventListener('click', undoLast);
-    document.getElementById('bhManualBtn').addEventListener('click', toggleManual);
-    document.getElementById('bhPauseBtn').addEventListener('click', pauseWork);
-    document.getElementById('bhContinueBtn').addEventListener('click', continueWork);
-    document.getElementById('bhManualSend').addEventListener('click', submitManual);
-    document.getElementById('bhManualInput').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') submitManual();
+  function removeExtraControls() {
+    ['bhTools', 'bhStatus', 'bhManualBox', 'bhPauseCover', 'bhLastStrip'].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
     });
-
-    syncUi();
-  }
-
-  function syncUi() {
-    const manualBtn = document.getElementById('bhManualBtn');
-    const manualBox = document.getElementById('bhManualBox');
-    const pauseCover = document.getElementById('bhPauseCover');
-    const undoBtn = document.getElementById('bhUndoBtn');
-
-    if (manualBtn) manualBtn.classList.toggle('active', settings.manualOpen);
-    if (manualBox) manualBox.classList.toggle('show', settings.manualOpen);
-    if (pauseCover) pauseCover.classList.toggle('show', settings.paused);
-    if (undoBtn) {
-      undoBtn.disabled = undoStack.length === 0;
-      undoBtn.style.opacity = undoStack.length ? '1' : '.45';
-    }
-  }
-
-  function updateStatus(text, good) {
-    buildUi();
-    const el = document.getElementById('bhStatusText');
-    if (!el) return;
-    el.textContent = text;
-    el.style.color = good === false ? '#C1121F' : '#1B4332';
   }
 
   function restoreKeyboardMode() {
@@ -184,71 +81,6 @@
     input.placeholder = 'სკანერი ან ხელით';
     const hint = document.getElementById('bhKeyboardHint');
     if (hint) hint.remove();
-  }
-
-  function toggleManual() {
-    settings.manualOpen = !settings.manualOpen;
-    saveUi();
-    syncUi();
-    const input = document.getElementById('bhManualInput');
-    if (settings.manualOpen && input) setTimeout(function () { input.focus(); }, 50);
-  }
-
-  function submitManual() {
-    const manual = document.getElementById('bhManualInput');
-    const scan = document.getElementById('barcodeInput');
-    if (!manual || !scan) return;
-    const code = manual.value.trim();
-    if (!code) return;
-    manual.value = '';
-    pushCurrentSessionToUndo();
-    scan.removeAttribute('readonly');
-    scan.value = code;
-    scan.dispatchEvent(new Event('input', { bubbles: true }));
-    scan.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', which: 13, keyCode: 13, bubbles: true }));
-    scan.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', which: 13, keyCode: 13, bubbles: true }));
-    setTimeout(function () {
-      scan.value = '';
-      manual.focus();
-    }, 40);
-  }
-
-  function pauseWork() {
-    settings.paused = true;
-    saveUi();
-    pushCurrentSessionToUndo(false);
-    updateStatus('პაუზა — შენახულია', true);
-    syncUi();
-  }
-
-  function continueWork() {
-    settings.paused = false;
-    saveUi();
-    updateStatus('გაგრძელდა', true);
-    syncUi();
-  }
-
-  function pushCurrentSessionToUndo(showButton) {
-    const text = getCurrentSessionText();
-    if (!text || text === previousSessionText) return;
-    previousSessionText = text;
-    undoStack.push(text);
-    if (undoStack.length > MAX_UNDO) undoStack.shift();
-    if (showButton !== false) syncUi();
-  }
-
-  function undoLast() {
-    const text = undoStack.pop();
-    if (!text) {
-      updateStatus('გასაუქმებელი არ არის', false);
-      return;
-    }
-    const key = getSessionKey();
-    localStorage.setItem(key, text);
-    localStorage.setItem(BACKUP_KEY, text);
-    updateStatus('ბოლო სკანი გაუქმდა — იხსნება თავიდან', true);
-    syncUi();
-    setTimeout(function () { location.reload(); }, 350);
   }
 
   function getLastBarcode(session) {
@@ -304,27 +136,13 @@
     }, true);
   }
 
-  function watchLocalSession() {
-    const text = getCurrentSessionText();
-    if (text && previousSessionText && text !== previousSessionText) {
-      undoStack.push(previousSessionText);
-      if (undoStack.length > MAX_UNDO) undoStack.shift();
-    }
-    if (text) previousSessionText = text;
-
+  function watchLastScan() {
     const session = getCurrentSession();
-    const count = getCountFromPage();
-    if (count !== lastCount) lastCount = count;
-
     const lastBarcode = getLastBarcode(session);
     if (lastBarcode && lastBarcode !== lastPromotedBarcode) {
       lastPromotedBarcode = lastBarcode;
       setTimeout(function () { promoteBarcode(lastBarcode, true); }, 120);
     }
-
-    const savedCount = session && typeof session.scannedCount !== 'undefined' ? session.scannedCount : count;
-    updateStatus('შენახულია ' + savedCount, true);
-    syncUi();
   }
 
   function setupInstallPrompt() {
@@ -364,30 +182,27 @@
 
   function setup() {
     injectStyles();
-    buildUi();
+    removeExtraControls();
     restoreKeyboardMode();
     setupCardPromoteOnClick();
     setupInstallPrompt();
-    previousSessionText = getCurrentSessionText();
-    lastCount = getCountFromPage();
-    if (settings.paused) syncUi();
-    watchLocalSession();
+    watchLastScan();
 
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') {
-        buildUi();
+        removeExtraControls();
         restoreKeyboardMode();
-        watchLocalSession();
+        watchLastScan();
       }
     });
-    window.addEventListener('focus', function () { buildUi(); restoreKeyboardMode(); watchLocalSession(); });
-    window.addEventListener('pageshow', function () { buildUi(); restoreKeyboardMode(); watchLocalSession(); });
-    document.addEventListener('click', function () { setTimeout(function () { buildUi(); restoreKeyboardMode(); watchLocalSession(); }, 60); }, true);
+    window.addEventListener('focus', function () { removeExtraControls(); restoreKeyboardMode(); watchLastScan(); });
+    window.addEventListener('pageshow', function () { removeExtraControls(); restoreKeyboardMode(); watchLastScan(); });
+    document.addEventListener('click', function () { setTimeout(function () { removeExtraControls(); restoreKeyboardMode(); watchLastScan(); }, 60); }, true);
 
     setInterval(function () {
-      buildUi();
+      removeExtraControls();
       restoreKeyboardMode();
-      watchLocalSession();
+      watchLastScan();
     }, 1000);
   }
 

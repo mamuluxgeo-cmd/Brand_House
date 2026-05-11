@@ -1,4 +1,4 @@
-// Brand House scanner local enhancements — offline first.
+// Brand House scanner local enhancements — offline comfort without sound/keyboard blocking.
 (function () {
   'use strict';
 
@@ -14,15 +14,18 @@
   let previousSessionText = '';
   let undoStack = [];
   let lastCount = -1;
-  let audioCtx = null;
+  let lastPromotedBarcode = '';
   let deferredPrompt = null;
 
   const settings = readJson(UI_KEY, {
-    sound: true,
-    vibration: true,
     manualOpen: false,
     paused: false
   });
+
+  // Sound/vibration is intentionally disabled.
+  settings.sound = false;
+  settings.vibration = false;
+  saveUi();
 
   function readJson(key, fallback) {
     try {
@@ -81,19 +84,11 @@
       .qty-editor{display:grid!important;grid-template-columns:58px minmax(82px,1fr) 58px!important;align-items:stretch!important;overflow:hidden!important}
       .qty-editor .qty-btn{width:58px!important;min-width:58px!important;height:54px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:28px!important;line-height:1!important;opacity:1!important;visibility:visible!important;color:#1A1A18!important}
       .qty-editor .qty-input{width:100%!important;min-width:0!important;height:54px!important;display:block!important;text-align:center!important}
-      #barcodeInput.bh-no-keyboard{caret-color:transparent!important}
-      .bh-keyboard-hint{margin-top:6px;font-size:10px;color:#7A7870}
-      .bh-tools{background:#fff;border-bottom:1px solid #E4E2DC;padding:8px 10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;position:relative;z-index:30}
+      .bh-tools{background:#fff;border-bottom:1px solid #E4E2DC;padding:8px 10px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;position:relative;z-index:30}
       .bh-tool-btn{border:1px solid #E4E2DC;background:#F7F6F2;color:#1A1A18;border-radius:10px;padding:8px 4px;font-size:11px;font-family:inherit;font-weight:600;line-height:1.15;min-height:38px}
       .bh-tool-btn.active{background:#1B4332;color:#fff;border-color:#1B4332}
       .bh-status{background:#F7F6F2;border-bottom:1px solid #E4E2DC;padding:6px 12px;font-size:11px;color:#7A7870;display:flex;justify-content:space-between;gap:8px;align-items:center}
       .bh-status b{color:#1B4332;font-weight:700}
-      .bh-last-strip{background:#fff;border-bottom:1px solid #E4E2DC;padding:7px 10px;display:flex;gap:6px;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
-      .bh-last-strip::-webkit-scrollbar{display:none}
-      .bh-chip{font-family:'DM Mono',monospace;font-size:10px;border-radius:999px;padding:5px 8px;border:1px solid #E4E2DC;background:#F7F6F2;color:#1A1A18;max-width:150px;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto}
-      .bh-chip.ok{background:#D8F3DC;color:#2D6A4F;border-color:#D8F3DC}
-      .bh-chip.bad{background:#FFE8E9;color:#C1121F;border-color:#FFE8E9}
-      .bh-chip.over{background:#FFF3CD;color:#CA6702;border-color:#FFF3CD}
       .bh-manual-box{display:none;background:#fff;border-bottom:1px solid #E4E2DC;padding:10px;gap:8px}
       .bh-manual-box.show{display:flex}
       .bh-manual-input{flex:1;border:1.5px solid #E4E2DC;border-radius:10px;padding:11px 12px;font-size:15px;font-family:'DM Mono',monospace;outline:none}
@@ -104,6 +99,8 @@
       .bh-pause-card h2{font-size:22px;margin-bottom:8px}
       .bh-pause-card p{font-size:13px;opacity:.86;margin-bottom:18px;line-height:1.45}
       .bh-continue-btn{width:100%;border:0;background:#fff;color:#1B4332;border-radius:14px;padding:15px;font-family:inherit;font-weight:800;font-size:15px}
+      .item-card.bh-promoted{box-shadow:0 0 0 2px rgba(27,67,50,.18);animation:bhPromoteFlash .55s ease}
+      @keyframes bhPromoteFlash{0%{transform:scale(1.015);background:#D8F3DC}100%{transform:scale(1);}}
       #bhInstallBox{position:fixed;left:14px;right:14px;bottom:82px;z-index:2000;background:#1B4332;color:#fff;border-radius:16px;padding:13px 14px;box-shadow:0 12px 30px rgba(0,0,0,.28);font-family:inherit}
     `;
     document.head.appendChild(style);
@@ -121,18 +118,12 @@
       <button class="bh-tool-btn" id="bhUndoBtn">↩ ბოლო</button>
       <button class="bh-tool-btn" id="bhManualBtn">⌨ ხელით</button>
       <button class="bh-tool-btn" id="bhPauseBtn">⏸ პაუზა</button>
-      <button class="bh-tool-btn" id="bhSoundBtn">🔊 ხმა</button>
     `;
 
     const status = document.createElement('div');
     status.id = 'bhStatus';
     status.className = 'bh-status';
     status.innerHTML = '<span>ტელეფონში შენახვა</span><b id="bhStatusText">მზადაა</b>';
-
-    const last = document.createElement('div');
-    last.id = 'bhLastStrip';
-    last.className = 'bh-last-strip';
-    last.innerHTML = '<span class="bh-chip">ბოლო სკანები</span>';
 
     const manual = document.createElement('div');
     manual.id = 'bhManualBox';
@@ -141,8 +132,7 @@
 
     filterBar.parentNode.insertBefore(tools, filterBar.nextSibling);
     filterBar.parentNode.insertBefore(status, tools.nextSibling);
-    filterBar.parentNode.insertBefore(last, status.nextSibling);
-    filterBar.parentNode.insertBefore(manual, last.nextSibling);
+    filterBar.parentNode.insertBefore(manual, status.nextSibling);
 
     const pause = document.createElement('div');
     pause.id = 'bhPauseCover';
@@ -153,7 +143,6 @@
     document.getElementById('bhUndoBtn').addEventListener('click', undoLast);
     document.getElementById('bhManualBtn').addEventListener('click', toggleManual);
     document.getElementById('bhPauseBtn').addEventListener('click', pauseWork);
-    document.getElementById('bhSoundBtn').addEventListener('click', toggleSound);
     document.getElementById('bhContinueBtn').addEventListener('click', continueWork);
     document.getElementById('bhManualSend').addEventListener('click', submitManual);
     document.getElementById('bhManualInput').addEventListener('keydown', function (e) {
@@ -164,16 +153,11 @@
   }
 
   function syncUi() {
-    const soundBtn = document.getElementById('bhSoundBtn');
     const manualBtn = document.getElementById('bhManualBtn');
     const manualBox = document.getElementById('bhManualBox');
     const pauseCover = document.getElementById('bhPauseCover');
     const undoBtn = document.getElementById('bhUndoBtn');
 
-    if (soundBtn) {
-      soundBtn.textContent = settings.sound || settings.vibration ? '🔊 ხმა' : '🔇 უხმო';
-      soundBtn.classList.toggle('active', settings.sound || settings.vibration);
-    }
     if (manualBtn) manualBtn.classList.toggle('active', settings.manualOpen);
     if (manualBox) manualBox.classList.toggle('show', settings.manualOpen);
     if (pauseCover) pauseCover.classList.toggle('show', settings.paused);
@@ -191,40 +175,15 @@
     el.style.color = good === false ? '#C1121F' : '#1B4332';
   }
 
-  function applyNoKeyboardMode() {
+  function restoreKeyboardMode() {
     const input = document.getElementById('barcodeInput');
     if (!input) return;
-    input.classList.add('bh-no-keyboard');
-    input.setAttribute('readonly', 'readonly');
-    input.setAttribute('inputmode', 'none');
-    input.placeholder = 'დაასკანერე ბარკოდი';
-
-    if (!input.__bhNoKeyboard) {
-      input.__bhNoKeyboard = true;
-      input.addEventListener('focus', function () {
-        if (document.getElementById('screenScan') && document.getElementById('screenScan').classList.contains('active')) {
-          setTimeout(function () { input.blur(); }, 0);
-        }
-      });
-    }
-
-    const wrap = input.closest('.scan-input-wrap');
-    if (wrap && !document.getElementById('bhKeyboardHint')) {
-      const hint = document.createElement('div');
-      hint.id = 'bhKeyboardHint';
-      hint.className = 'bh-keyboard-hint';
-      hint.textContent = 'კლავიატურა გამორთულია — სკანერი იმუშავებს. ხელით შეყვანა ღილაკით.';
-      wrap.appendChild(hint);
-    }
-  }
-
-  function toggleSound() {
-    const next = !(settings.sound || settings.vibration);
-    settings.sound = next;
-    settings.vibration = next;
-    saveUi();
-    syncUi();
-    feedback('ok');
+    input.classList.remove('bh-no-keyboard');
+    input.removeAttribute('readonly');
+    input.setAttribute('inputmode', 'text');
+    input.placeholder = 'სკანერი ან ხელით';
+    const hint = document.getElementById('bhKeyboardHint');
+    if (hint) hint.remove();
   }
 
   function toggleManual() {
@@ -243,14 +202,13 @@
     if (!code) return;
     manual.value = '';
     pushCurrentSessionToUndo();
-    scan.readOnly = false;
+    scan.removeAttribute('readonly');
     scan.value = code;
     scan.dispatchEvent(new Event('input', { bubbles: true }));
     scan.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', which: 13, keyCode: 13, bubbles: true }));
     scan.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', which: 13, keyCode: 13, bubbles: true }));
     setTimeout(function () {
       scan.value = '';
-      scan.readOnly = true;
       manual.focus();
     }, 40);
   }
@@ -289,9 +247,61 @@
     localStorage.setItem(key, text);
     localStorage.setItem(BACKUP_KEY, text);
     updateStatus('ბოლო სკანი გაუქმდა — იხსნება თავიდან', true);
-    feedback('undo');
     syncUi();
     setTimeout(function () { location.reload(); }, 350);
+  }
+
+  function getLastBarcode(session) {
+    if (!session || !Array.isArray(session.scanLog) || !session.scanLog.length) return '';
+    const last = session.scanLog[session.scanLog.length - 1];
+    return String(last.barcode || last.code || last.value || '').trim();
+  }
+
+  function normalize(value) {
+    return String(value || '').replace(/\s+/g, '').trim();
+  }
+
+  function getCardBarcode(card) {
+    const barcodeEl = card ? card.querySelector('.item-barcode') : null;
+    return barcodeEl ? normalize(barcodeEl.textContent) : '';
+  }
+
+  function promoteBarcode(barcode, smooth) {
+    const list = document.getElementById('itemsList');
+    if (!list || !barcode) return;
+    const target = normalize(barcode);
+    const cards = Array.from(list.querySelectorAll('.item-card'));
+    const card = cards.find(function (item) { return getCardBarcode(item) === target; });
+    if (!card) return;
+
+    const label = card.previousElementSibling;
+    if (label && label.classList && label.classList.contains('section-label')) {
+      list.prepend(label);
+      label.after(card);
+    } else {
+      list.prepend(card);
+    }
+
+    card.classList.remove('bh-promoted');
+    void card.offsetWidth;
+    card.classList.add('bh-promoted');
+    setTimeout(function () { card.classList.remove('bh-promoted'); }, 700);
+
+    if (smooth !== false) {
+      try { list.scrollTo({ top: 0, behavior: 'smooth' }); }
+      catch (e) { list.scrollTop = 0; }
+    }
+  }
+
+  function setupCardPromoteOnClick() {
+    if (document.__bhPromoteClickAttached) return;
+    document.__bhPromoteClickAttached = true;
+    document.addEventListener('click', function (event) {
+      const card = event.target.closest ? event.target.closest('.item-card') : null;
+      if (!card) return;
+      const barcode = getCardBarcode(card);
+      if (barcode) setTimeout(function () { promoteBarcode(barcode, true); }, 40);
+    }, true);
   }
 
   function watchLocalSession() {
@@ -304,61 +314,17 @@
 
     const session = getCurrentSession();
     const count = getCountFromPage();
-    if (count !== lastCount) {
-      if (lastCount >= 0 && count > lastCount) feedback('ok');
-      lastCount = count;
+    if (count !== lastCount) lastCount = count;
+
+    const lastBarcode = getLastBarcode(session);
+    if (lastBarcode && lastBarcode !== lastPromotedBarcode) {
+      lastPromotedBarcode = lastBarcode;
+      setTimeout(function () { promoteBarcode(lastBarcode, true); }, 120);
     }
 
-    renderLast(session);
     const savedCount = session && typeof session.scannedCount !== 'undefined' ? session.scannedCount : count;
     updateStatus('შენახულია ' + savedCount, true);
     syncUi();
-  }
-
-  function renderLast(session) {
-    buildUi();
-    const strip = document.getElementById('bhLastStrip');
-    if (!strip) return;
-    const log = session && Array.isArray(session.scanLog) ? session.scanLog.slice(-10).reverse() : [];
-    if (!log.length) {
-      strip.innerHTML = '<span class="bh-chip">ბოლო სკანები</span>';
-      return;
-    }
-    strip.innerHTML = log.map(function (entry) {
-      const code = escapeHtml(String(entry.barcode || entry.code || entry.value || '—'));
-      const status = String(entry.status || 'ok');
-      const cls = status.includes('უც') || status.includes('unknown') ? 'bad' : status.includes('მეტ') || status.includes('over') ? 'over' : 'ok';
-      return '<span class="bh-chip ' + cls + '">' + code + '</span>';
-    }).join('');
-  }
-
-  function escapeHtml(value) {
-    return value.replace(/[&<>"']/g, function (char) {
-      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char];
-    });
-  }
-
-  function feedback(type) {
-    if (settings.vibration && navigator.vibrate) {
-      if (type === 'undo') navigator.vibrate(40);
-      else navigator.vibrate(25);
-    }
-    if (!settings.sound) return;
-    try {
-      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      const now = audioCtx.currentTime;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(type === 'undo' ? 520 : 880, now);
-      gain.gain.setValueAtTime(0.001, now);
-      gain.gain.exponentialRampToValueAtTime(0.07, now + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + 0.09);
-    } catch (e) {}
   }
 
   function setupInstallPrompt() {
@@ -399,7 +365,8 @@
   function setup() {
     injectStyles();
     buildUi();
-    applyNoKeyboardMode();
+    restoreKeyboardMode();
+    setupCardPromoteOnClick();
     setupInstallPrompt();
     previousSessionText = getCurrentSessionText();
     lastCount = getCountFromPage();
@@ -409,17 +376,17 @@
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') {
         buildUi();
-        applyNoKeyboardMode();
+        restoreKeyboardMode();
         watchLocalSession();
       }
     });
-    window.addEventListener('focus', function () { buildUi(); applyNoKeyboardMode(); watchLocalSession(); });
-    window.addEventListener('pageshow', function () { buildUi(); applyNoKeyboardMode(); watchLocalSession(); });
-    document.addEventListener('click', function () { setTimeout(function () { buildUi(); applyNoKeyboardMode(); watchLocalSession(); }, 60); }, true);
+    window.addEventListener('focus', function () { buildUi(); restoreKeyboardMode(); watchLocalSession(); });
+    window.addEventListener('pageshow', function () { buildUi(); restoreKeyboardMode(); watchLocalSession(); });
+    document.addEventListener('click', function () { setTimeout(function () { buildUi(); restoreKeyboardMode(); watchLocalSession(); }, 60); }, true);
 
     setInterval(function () {
       buildUi();
-      applyNoKeyboardMode();
+      restoreKeyboardMode();
       watchLocalSession();
     }, 1000);
   }

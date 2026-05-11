@@ -9,6 +9,7 @@
   const BACKUP_KEY = 'bh_session_backup';
   const OP_KEY = 'bh_last_op';
   const UI_KEY = 'bh_local_ui_settings';
+  const KEEPALIVE_KEY = 'bh_last_alive_session';
 
   let lastPromotedBarcode = '';
   let deferredPrompt = null;
@@ -38,16 +39,57 @@
 
   function getSessionKey() {
     const op = getOpId();
-    return op ? SESSION_PREFIX + op : BACKUP_KEY;
+    return op ? SESSION_PREFIX + op : '';
   }
 
   function getCurrentSessionText() {
-    return localStorage.getItem(getSessionKey()) || localStorage.getItem(BACKUP_KEY) || '';
+    const key = getSessionKey();
+    return key ? (localStorage.getItem(key) || '') : '';
   }
 
   function getCurrentSession() {
     const text = getCurrentSessionText();
     try { return text ? JSON.parse(text) : null; } catch (e) { return null; }
+  }
+
+  function forceSaveSession() {
+    try {
+      if (typeof window.saveSession === 'function') window.saveSession();
+    } catch (e) {}
+
+    const key = getSessionKey();
+    if (!key) return;
+
+    const text = localStorage.getItem(key);
+    if (!text) return;
+
+    try {
+      const data = JSON.parse(text);
+      data.savedAt = new Date().toISOString();
+      data.operationId = data.operationId || getOpId();
+      data.employeeName = data.employeeName || localStorage.getItem('bh_employee') || '';
+      const nextText = JSON.stringify(data);
+      localStorage.setItem(key, nextText);
+      localStorage.setItem(BACKUP_KEY, nextText);
+      localStorage.setItem(KEEPALIVE_KEY, JSON.stringify({ key: key, op: getOpId(), ts: Date.now() }));
+    } catch (e) {
+      localStorage.setItem(BACKUP_KEY, text);
+      localStorage.setItem(KEEPALIVE_KEY, JSON.stringify({ key: key, op: getOpId(), ts: Date.now() }));
+    }
+  }
+
+  function restoreBackupIfNeeded() {
+    const op = getOpId();
+    const key = getSessionKey();
+    if (!op || !key || localStorage.getItem(key)) return;
+
+    try {
+      const alive = JSON.parse(localStorage.getItem(KEEPALIVE_KEY) || '{}');
+      const backup = localStorage.getItem(BACKUP_KEY);
+      if (backup && alive && String(alive.op) === String(op)) {
+        localStorage.setItem(key, backup);
+      }
+    } catch (e) {}
   }
 
   function injectStyles() {
@@ -133,16 +175,37 @@
       if (!card) return;
       const barcode = getCardBarcode(card);
       if (barcode) setTimeout(function () { promoteBarcode(barcode, true); }, 40);
+      forceSaveSession();
     }, true);
   }
 
   function watchLastScan() {
+    restoreBackupIfNeeded();
+    forceSaveSession();
+
     const session = getCurrentSession();
     const lastBarcode = getLastBarcode(session);
     if (lastBarcode && lastBarcode !== lastPromotedBarcode) {
       lastPromotedBarcode = lastBarcode;
       setTimeout(function () { promoteBarcode(lastBarcode, true); }, 120);
     }
+  }
+
+  function setupPersistenceGuards() {
+    if (window.__BH_PERSISTENCE_GUARDS__) return;
+    window.__BH_PERSISTENCE_GUARDS__ = true;
+
+    ['pagehide', 'beforeunload', 'blur'].forEach(function (eventName) {
+      window.addEventListener(eventName, forceSaveSession, { capture: true });
+    });
+
+    document.addEventListener('visibilitychange', function () {
+      forceSaveSession();
+      if (document.visibilityState === 'visible') restoreBackupIfNeeded();
+    }, true);
+
+    document.addEventListener('input', function () { setTimeout(forceSaveSession, 30); }, true);
+    document.addEventListener('keydown', function () { setTimeout(forceSaveSession, 80); }, true);
   }
 
   function setupInstallPrompt() {
@@ -183,8 +246,10 @@
   function setup() {
     injectStyles();
     removeExtraControls();
+    restoreBackupIfNeeded();
     restoreKeyboardMode();
     setupCardPromoteOnClick();
+    setupPersistenceGuards();
     setupInstallPrompt();
     watchLastScan();
 
